@@ -14,9 +14,15 @@ pub mod private;
 /// The public key module.
 pub mod public;
 
+/// The key pair module.
+pub mod keypair;
+
 /// The Schnorr signature module.
 pub mod signature;
 
 pub use private::PrivateKey;
 pub use public::PublicKey;
+
+pub use keypair::KeyPair;
+
 pub use signature::Signature;
