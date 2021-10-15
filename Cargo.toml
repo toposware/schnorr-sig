@@ -13,6 +13,7 @@ getrandom = { version = "0.2", default-features = false, features = ["js"] }
 hash = { git = "https://github.com/ToposWare/hash.git", branch = "main", default-features = false }
 rand_core = { version = "0.6", default-features = false, features = ["getrandom"] }
 stark-curve = { git = "https://github.com/ToposWare/stark-curve.git", branch = "main", default-features = false }
+subtle = { version = "2.4", default-features = false }
 
 [dev-dependencies]
 criterion = "0.3"

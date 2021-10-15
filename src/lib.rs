@@ -8,7 +8,15 @@
 #![deny(unsafe_code)]
 #![cfg_attr(not(feature = "std"), no_std)]
 
+/// The private key module.
+pub mod private;
+
+/// The public key module.
+pub mod public;
+
 /// The Schnorr signature module.
 pub mod signature;
 
+pub use private::PrivateKey;
+pub use public::PublicKey;
 pub use signature::Signature;

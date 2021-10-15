@@ -16,7 +16,7 @@ use stark_curve::{AffinePoint, FieldElement, Scalar};
 pub struct Signature {
     /// The affine coordinate of the random point generated during signing
     pub x: FieldElement,
-    /// The exponent from the random scalar, the secret key
+    /// The exponent from the random scalar, the private key
     /// and the output of the hash seen as a `Scalar` element
     pub e: Scalar,
 }
