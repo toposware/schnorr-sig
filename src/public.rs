@@ -1,9 +1,9 @@
 //! This module provides a `PublicKey` wrapping
 //! struct around a `ProjectivePoint` element.
 
-use super::private::PrivateKey;
+use super::{PrivateKey, Signature};
 
-use stark_curve::ProjectivePoint;
+use stark_curve::{FieldElement, ProjectivePoint};
 
 /// A private key
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -25,5 +25,10 @@ impl PublicKey {
     /// Constructs a private key from an array of bytes
     pub fn from_bytes(bytes: &[u8; 32]) -> Option<Self> {
         ProjectivePoint::from_compressed(bytes).map(PublicKey)
+    }
+
+    /// Verifies a signature against a message and this public key
+    pub fn verify_signature(self, signature: Signature, message: &[FieldElement]) -> bool {
+        signature.verify(message, self)
     }
 }

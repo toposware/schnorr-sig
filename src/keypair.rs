@@ -1,9 +1,10 @@
 //! This module provides a `KeyPair` struct
 //! combining a `PrivateKey` and an associated `PublicKey`.
 
-use super::{PrivateKey, PublicKey};
+use super::{PrivateKey, PublicKey, Signature};
 
 use rand_core::{CryptoRng, RngCore};
+use stark_curve::FieldElement;
 use subtle::{Choice, CtOption};
 
 /// A KeyPair
@@ -63,5 +64,10 @@ impl KeyPair {
                 Choice::from(1u8),
             )
         })
+    }
+
+    /// Verifies a signature against a message and this key pair
+    pub fn verify_signature(self, signature: Signature, message: &[FieldElement]) -> bool {
+        signature.verify(message, self.public_key)
     }
 }
