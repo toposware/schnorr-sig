@@ -5,7 +5,10 @@
 
 use bitvec::{order::Lsb0, view::AsBits};
 use rand_utils::{rand_value, Randomizable};
-use hash::rescue::{hasher::RescueHash, digest::RescueDigest};
+use hash::{
+    rescue::{hasher::RescueHash, digest::RescueDigest},
+    traits::Hasher,
+};
 use stark_curve::{AffinePoint, FieldElement, Scalar};
 
 mod rand_utils;
@@ -51,15 +54,15 @@ pub fn verify_signature(message: [FieldElement; 6], signature: (FieldElement, Sc
 
 fn hash_message(input: [FieldElement; 2], message: [FieldElement; 6]) -> [FieldElement; 2] {
     let mut h = RescueHash::digest(&input);
-    let mut message_chunk = RescueDigest::new(message[0], message[1]);
+    let mut message_chunk = RescueDigest::new([message[0], message[1]]);
 
     h = RescueHash::merge(&[h, message_chunk]);
-    message_chunk = RescueDigest::new(message[2], message[3]);
+    message_chunk = RescueDigest::new([message[2], message[3]]);
     h = RescueHash::merge(&[h, message_chunk]);
-    message_chunk = RescueDigest::new(message[4], message[5]);
+    message_chunk = RescueDigest::new([message[4], message[5]]);
     h = RescueHash::merge(&[h, message_chunk]);
 
-    h.to_elements()
+    h.as_elements()
 }
 
 impl Randomizable for Scalar {
