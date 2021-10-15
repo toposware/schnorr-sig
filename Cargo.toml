@@ -14,6 +14,13 @@ hash = { git = "https://github.com/ToposWare/hash.git", branch = "main", default
 rand_core = { version = "0.6", default-features = false, features = ["getrandom"] }
 stark-curve = { git = "https://github.com/ToposWare/stark-curve.git", branch = "main", default-features = false }
 
+[dev-dependencies]
+criterion = "0.3"
+
 [features]
 default = ["std"]
 std = []
+
+[[bench]]
+name = "schnorr"
+harness = false
