@@ -1,6 +1,8 @@
 //! This module provides a Signature struct implementing
 //! Schnorr signing and verification.
 
+use super::{PrivateKey, PublicKey};
+
 use bitvec::{order::Lsb0, view::AsBits};
 use hash::{
     rescue::{digest::RescueDigest, hasher::RescueHash},
@@ -24,8 +26,8 @@ pub struct Signature {
 impl Signature {
     /// Computes a Schnorr signature
     pub fn sign(
-        message: [FieldElement; 6],
-        skey: Scalar,
+        message: &[FieldElement],
+        skey: PrivateKey,
         mut rng: impl CryptoRng + RngCore,
     ) -> Self {
         let r = Scalar::random(&mut rng);
@@ -38,7 +40,7 @@ impl Signature {
         // Reconstruct a scalar from the binary sequence of h
         let h_scalar = Scalar::from_bits_vartime(h_bits);
 
-        let e = r - skey * h_scalar;
+        let e = r - skey.0 * h_scalar;
         Signature {
             x: r_point.get_x(),
             e,
@@ -46,13 +48,11 @@ impl Signature {
     }
 
     /// Verifies a Schnorr signature
-    pub fn verify(message: [FieldElement; 6], signature: Signature) -> bool {
-        let e_point = AffinePoint::generator() * signature.e;
-        // Should we keep this implied, or provide the pkey and ensure it is hashed with the message?
-        let pkey = AffinePoint::from_raw_coordinates([message[0], message[1]]);
-        assert!(bool::from(pkey.is_on_curve()));
+    pub fn verify(self, message: &[FieldElement], pkey: PublicKey) -> bool {
+        let e_point = AffinePoint::generator() * self.e;
+        let pkey: AffinePoint = pkey.0.into();
 
-        let h = hash_message([signature.x, FieldElement::zero()], message);
+        let h = hash_message([self.x, FieldElement::zero()], message);
         let h_bytes = h[0].to_bytes();
         let h_bits = h_bytes.as_bits::<Lsb0>();
 
@@ -63,19 +63,19 @@ impl Signature {
 
         let r_point = AffinePoint::from(e_point + h_pubkey_point);
 
-        r_point.get_x() == signature.x
+        r_point.get_x() == self.x
     }
 }
 
-fn hash_message(input: [FieldElement; 2], message: [FieldElement; 6]) -> [FieldElement; 2] {
+fn hash_message(input: [FieldElement; 2], message: &[FieldElement]) -> [FieldElement; 2] {
     let mut h = RescueHash::digest(&input);
-    let mut message_chunk = RescueDigest::new([message[0], message[1]]);
+    let mut chunk = [FieldElement::zero(), FieldElement::zero()];
 
-    h = RescueHash::merge(&[h, message_chunk]);
-    message_chunk = RescueDigest::new([message[2], message[3]]);
-    h = RescueHash::merge(&[h, message_chunk]);
-    message_chunk = RescueDigest::new([message[4], message[5]]);
-    h = RescueHash::merge(&[h, message_chunk]);
+    for message_chunk in message.chunks(2) {
+        chunk.copy_from_slice(message_chunk);
+        let digest = RescueDigest::new(chunk);
+        h = RescueHash::merge(&[h, digest]);
+    }
 
     h.as_elements()
 }
@@ -92,13 +92,11 @@ mod test {
             *message_chunk = FieldElement::random(OsRng);
         }
 
-        let skey = Scalar::random(OsRng);
-        let pkey = AffinePoint::from(AffinePoint::generator() * skey);
-        message[0] = pkey.get_x();
-        message[1] = pkey.get_y();
+        let skey = PrivateKey::new(OsRng);
+        let pkey = PublicKey::from_private_key(skey);
 
-        let signature = Signature::sign(message, skey, OsRng);
-        assert!(Signature::verify(message, signature));
+        let signature = Signature::sign(&message, skey, OsRng);
+        assert!(signature.verify(&message, pkey));
     }
 
     #[test]
@@ -108,17 +106,15 @@ mod test {
             *message_chunk = FieldElement::random(OsRng);
         }
 
-        let skey = Scalar::random(OsRng);
-        let pkey = AffinePoint::from(AffinePoint::generator() * skey);
-        message[0] = pkey.get_x();
-        message[1] = pkey.get_y();
+        let skey = PrivateKey::new(OsRng);
+        let pkey = PublicKey::from_private_key(skey);
 
-        let signature = Signature::sign(message, skey, OsRng);
+        let signature = Signature::sign(&message, skey, OsRng);
 
         {
             let mut wrong_message = message;
             wrong_message[4] = FieldElement::zero();
-            assert!(!Signature::verify(wrong_message, signature));
+            assert!(!signature.verify(&wrong_message, pkey));
         }
 
         {
@@ -126,7 +122,7 @@ mod test {
                 x: FieldElement::zero(),
                 e: signature.e,
             };
-            assert!(!Signature::verify(message, wrong_signature_1));
+            assert!(!wrong_signature_1.verify(&message, pkey));
         }
 
         {
@@ -134,7 +130,7 @@ mod test {
                 x: signature.x,
                 e: Scalar::zero(),
             };
-            assert!(!Signature::verify(message, wrong_signature_2));
+            assert!(!wrong_signature_2.verify(&message, pkey));
         }
     }
 }

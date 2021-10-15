@@ -3,9 +3,11 @@ extern crate criterion;
 
 use criterion::Criterion;
 use rand_core::OsRng;
-use stark_curve::{AffinePoint, FieldElement, Scalar};
+use stark_curve::FieldElement;
 
 extern crate schnorr_sig;
+use schnorr_sig::PrivateKey;
+use schnorr_sig::PublicKey;
 use schnorr_sig::Signature;
 
 fn criterion_benchmark(c: &mut Criterion) {
@@ -15,12 +17,9 @@ fn criterion_benchmark(c: &mut Criterion) {
             *message_chunk = FieldElement::random(OsRng);
         }
 
-        let skey = Scalar::random(OsRng);
-        let pkey = AffinePoint::from(AffinePoint::generator() * skey);
-        message[0] = pkey.get_x();
-        message[1] = pkey.get_y();
+        let skey = PrivateKey::new(OsRng);
 
-        bench.iter(|| Signature::sign(message, skey, OsRng))
+        bench.iter(|| Signature::sign(&message, skey, OsRng))
     });
 
     c.bench_function("verify", |bench| {
@@ -29,14 +28,12 @@ fn criterion_benchmark(c: &mut Criterion) {
             *message_chunk = FieldElement::random(OsRng);
         }
 
-        let skey = Scalar::random(OsRng);
-        let pkey = AffinePoint::from(AffinePoint::generator() * skey);
-        message[0] = pkey.get_x();
-        message[1] = pkey.get_y();
+        let skey = PrivateKey::new(OsRng);
+        let pkey = PublicKey::from_private_key(skey);
 
-        let signature = Signature::sign(message, skey, OsRng);
+        let signature = Signature::sign(&message, skey, OsRng);
 
-        bench.iter(|| Signature::verify(message, signature))
+        bench.iter(|| signature.verify(&message, pkey))
     });
 }
 
