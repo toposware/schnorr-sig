@@ -4,21 +4,20 @@
 // LICENSE file in the root directory of this source tree.
 
 use bitvec::{order::Lsb0, view::AsBits};
-use rand_utils::{rand_value, Randomizable};
 use hash::{
-    rescue::{hasher::RescueHash, digest::RescueDigest},
+    rescue::{digest::RescueDigest, hasher::RescueHash},
     traits::Hasher,
 };
+use rand_core::{CryptoRng, RngCore};
 use stark_curve::{AffinePoint, FieldElement, Scalar};
 
-mod rand_utils;
-
-// #[cfg(test)]
-// mod tests;
-
 /// Computes a Schnorr signature
-pub fn sign(message: [FieldElement; 6], skey: Scalar) -> (FieldElement, Scalar) {
-    let r: Scalar = rand_value();
+pub fn sign(
+    message: [FieldElement; 6],
+    skey: Scalar,
+    mut rng: impl CryptoRng + RngCore,
+) -> (FieldElement, Scalar) {
+    let r = Scalar::random(&mut rng);
     let r_point = AffinePoint::from(AffinePoint::generator() * r);
 
     let h = hash_message([r_point.get_x(), FieldElement::zero()], message);
@@ -63,12 +62,4 @@ fn hash_message(input: [FieldElement; 2], message: [FieldElement; 6]) -> [FieldE
     h = RescueHash::merge(&[h, message_chunk]);
 
     h.as_elements()
-}
-
-impl Randomizable for Scalar {
-    const VALUE_SIZE: usize = core::mem::size_of::<[u64; 4]>();
-
-    fn from_random_bytes(bytes: &[u8]) -> Option<Self> {
-        Self::try_from(bytes).ok()
-    }
 }
