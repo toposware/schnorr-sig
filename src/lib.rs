@@ -8,6 +8,8 @@
 #![deny(unsafe_code)]
 #![cfg_attr(not(feature = "std"), no_std)]
 
+mod error;
+
 /// The private key module.
 pub mod private;
 

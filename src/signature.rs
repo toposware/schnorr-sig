@@ -1,6 +1,7 @@
 //! This module provides a Signature struct implementing
 //! Schnorr signing and verification.
 
+use super::error::SignatureError;
 use super::{PrivateKey, PublicKey};
 
 use bitvec::{order::Lsb0, view::AsBits};
@@ -48,7 +49,7 @@ impl Signature {
     }
 
     /// Verifies a Schnorr signature
-    pub fn verify(self, message: &[FieldElement], pkey: PublicKey) -> bool {
+    pub fn verify(self, message: &[FieldElement], pkey: PublicKey) -> Result<(), SignatureError> {
         let e_point = AffinePoint::generator() * self.e;
         let pkey: AffinePoint = pkey.0.into();
 
@@ -63,7 +64,11 @@ impl Signature {
 
         let r_point = AffinePoint::from(e_point + h_pubkey_point);
 
-        r_point.get_x() == self.x
+        if r_point.get_x() == self.x {
+            Ok(())
+        } else {
+            Err(SignatureError::InvalidSignature)
+        }
     }
 }
 
@@ -96,7 +101,7 @@ mod test {
         let pkey = PublicKey::from_private_key(skey);
 
         let signature = Signature::sign(&message, skey, OsRng);
-        assert!(signature.verify(&message, pkey));
+        assert!(signature.verify(&message, pkey).is_ok());
     }
 
     #[test]
@@ -114,7 +119,7 @@ mod test {
         {
             let mut wrong_message = message;
             wrong_message[4] = FieldElement::zero();
-            assert!(!signature.verify(&wrong_message, pkey));
+            assert!(signature.verify(&wrong_message, pkey).is_err());
         }
 
         {
@@ -122,7 +127,7 @@ mod test {
                 x: FieldElement::zero(),
                 e: signature.e,
             };
-            assert!(!wrong_signature_1.verify(&message, pkey));
+            assert!(wrong_signature_1.verify(&message, pkey).is_err());
         }
 
         {
@@ -130,7 +135,7 @@ mod test {
                 x: signature.x,
                 e: Scalar::zero(),
             };
-            assert!(!wrong_signature_2.verify(&message, pkey));
+            assert!(wrong_signature_2.verify(&message, pkey).is_err());
         }
     }
 }

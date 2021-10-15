@@ -1,6 +1,7 @@
 //! This module provides a `KeyPair` struct
 //! combining a `PrivateKey` and an associated `PublicKey`.
 
+use super::error::SignatureError;
 use super::{PrivateKey, PublicKey, Signature};
 
 use rand_core::{CryptoRng, RngCore};
@@ -67,7 +68,11 @@ impl KeyPair {
     }
 
     /// Verifies a signature against a message and this key pair
-    pub fn verify_signature(self, signature: Signature, message: &[FieldElement]) -> bool {
+    pub fn verify_signature(
+        self,
+        signature: Signature,
+        message: &[FieldElement],
+    ) -> Result<(), SignatureError> {
         signature.verify(message, self.public_key)
     }
 }

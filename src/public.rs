@@ -1,6 +1,7 @@
 //! This module provides a `PublicKey` wrapping
 //! struct around a `ProjectivePoint` element.
 
+use super::error::SignatureError;
 use super::{PrivateKey, Signature};
 
 use stark_curve::{FieldElement, ProjectivePoint};
@@ -28,7 +29,11 @@ impl PublicKey {
     }
 
     /// Verifies a signature against a message and this public key
-    pub fn verify_signature(self, signature: Signature, message: &[FieldElement]) -> bool {
+    pub fn verify_signature(
+        self,
+        signature: Signature,
+        message: &[FieldElement],
+    ) -> Result<(), SignatureError> {
         signature.verify(message, self)
     }
 }
