@@ -10,8 +10,8 @@ extern crate schnorr_sig;
 fn criterion_benchmark(c: &mut Criterion) {
     c.bench_function("sign", |bench| {
         let mut message = [FieldElement::zero(); 6];
-        for i in 2..6 {
-            message[i] = FieldElement::random(OsRng);
+        for message_chunk in message.iter_mut().skip(2) {
+            *message_chunk = FieldElement::random(OsRng);
         }
 
         let skey = Scalar::random(OsRng);
@@ -24,8 +24,8 @@ fn criterion_benchmark(c: &mut Criterion) {
 
     c.bench_function("verify", |bench| {
         let mut message = [FieldElement::zero(); 6];
-        for i in 2..6 {
-            message[i] = FieldElement::random(OsRng);
+        for message_chunk in message.iter_mut().skip(2) {
+            *message_chunk = FieldElement::random(OsRng);
         }
 
         let skey = Scalar::random(OsRng);

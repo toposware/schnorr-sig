@@ -78,8 +78,8 @@ mod test {
     #[test]
     fn test_signature() {
         let mut message = [FieldElement::zero(); 6];
-        for i in 2..6 {
-            message[i] = FieldElement::random(OsRng);
+        for message_chunk in message.iter_mut().skip(2) {
+            *message_chunk = FieldElement::random(OsRng);
         }
 
         let skey = Scalar::random(OsRng);
@@ -94,8 +94,8 @@ mod test {
     #[test]
     fn test_invalid_signature() {
         let mut message = [FieldElement::zero(); 6];
-        for i in 2..6 {
-            message[i] = FieldElement::random(OsRng);
+        for message_chunk in message.iter_mut().skip(2) {
+            *message_chunk = FieldElement::random(OsRng);
         }
 
         let skey = Scalar::random(OsRng);
@@ -106,7 +106,7 @@ mod test {
         let signature = sign(message, skey, OsRng);
 
         {
-            let mut wrong_message = message.clone();
+            let mut wrong_message = message;
             wrong_message[4] = FieldElement::zero();
             assert!(!verify_signature(wrong_message, signature));
         }
