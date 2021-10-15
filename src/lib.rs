@@ -1,7 +1,12 @@
-// Copyright (c) Facebook, Inc. and its affiliates.
-//
-// This source code is licensed under the MIT license found in the
-// LICENSE file in the root directory of this source tree.
+//! This crate provides an implementation of a custom Schnorr
+//! signature with internal Rescue hash on a 252-bit field.
+
+#![cfg_attr(docsrs, feature(doc_cfg))]
+#![deny(broken_intra_doc_links)]
+#![deny(missing_debug_implementations)]
+#![deny(missing_docs)]
+#![deny(unsafe_code)]
+#![cfg_attr(not(feature = "std"), no_std)]
 
 use bitvec::{order::Lsb0, view::AsBits};
 use hash::{
