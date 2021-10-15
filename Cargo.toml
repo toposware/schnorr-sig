@@ -9,8 +9,9 @@ edition = "2018"
 
 [dependencies]
 bitvec = { version = "0.22", default-features = false }
+getrandom = { version = "0.2", default-features = false, features = ["js"] }
 hash = { git = "https://github.com/ToposWare/hash.git", branch = "main", default-features = false }
-rand_core = { version = "0.6", default-features = false }
+rand_core = { version = "0.6", default-features = false, features = ["getrandom"] }
 stark-curve = { git = "https://github.com/ToposWare/stark-curve.git", branch = "main", default-features = false }
 
 [features]

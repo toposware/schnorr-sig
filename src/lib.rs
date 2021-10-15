@@ -39,6 +39,7 @@ pub fn sign(
 /// Verifies a Schnorr signature
 pub fn verify_signature(message: [FieldElement; 6], signature: (FieldElement, Scalar)) -> bool {
     let s_point = AffinePoint::generator() * signature.1;
+    // Should we keep this implied, or provide the pkey and ensure it is hashed with the message?
     let pkey = AffinePoint::from_raw_coordinates([message[0], message[1]]);
     assert!(bool::from(pkey.is_on_curve()));
 
@@ -67,4 +68,57 @@ fn hash_message(input: [FieldElement; 2], message: [FieldElement; 6]) -> [FieldE
     h = RescueHash::merge(&[h, message_chunk]);
 
     h.as_elements()
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use rand_core::OsRng;
+
+    #[test]
+    fn test_signature() {
+        let mut message = [FieldElement::zero(); 6];
+        for i in 2..6 {
+            message[i] = FieldElement::random(OsRng);
+        }
+
+        let skey = Scalar::random(OsRng);
+        let pkey = AffinePoint::from(AffinePoint::generator() * skey);
+        message[0] = pkey.get_x();
+        message[1] = pkey.get_y();
+
+        let signature = sign(message, skey, OsRng);
+        assert!(verify_signature(message, signature));
+    }
+
+    #[test]
+    fn test_invalid_signature() {
+        let mut message = [FieldElement::zero(); 6];
+        for i in 2..6 {
+            message[i] = FieldElement::random(OsRng);
+        }
+
+        let skey = Scalar::random(OsRng);
+        let pkey = AffinePoint::from(AffinePoint::generator() * skey);
+        message[0] = pkey.get_x();
+        message[1] = pkey.get_y();
+
+        let signature = sign(message, skey, OsRng);
+
+        {
+            let mut wrong_message = message.clone();
+            wrong_message[4] = FieldElement::zero();
+            assert!(!verify_signature(wrong_message, signature));
+        }
+
+        {
+            let wrong_signature_1 = (FieldElement::zero(), signature.1);
+            assert!(!verify_signature(message, wrong_signature_1));
+        }
+
+        {
+            let wrong_signature_2 = (signature.0, Scalar::zero());
+            assert!(!verify_signature(message, wrong_signature_2));
+        }
+    }
 }
