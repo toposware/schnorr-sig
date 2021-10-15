@@ -1,0 +1,13 @@
+[package]
+name = "schnorr-sig"
+version = "0.1.0"
+authors = ["Travis Alan Baumbaugh <TABaumbaugh@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+bitvec = { version = "0.22", default-features = false }
+hash = { git = "https://github.com/ToposWare/hash.git", branch = "main"}#, default-features = false }
+stark-curve = { git = "https://github.com/ToposWare/stark-curve.git", branch = "main", default-features = false }
+
+[target.'cfg(not(target_family = "wasm"))'.dependencies]
+rand =  { version = "0.8" }
