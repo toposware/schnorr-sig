@@ -33,7 +33,7 @@ fn criterion_benchmark(c: &mut Criterion) {
 
         let signature = Signature::sign(&message, &skey, OsRng);
 
-        bench.iter(|| signature.verify(&message, pkey))
+        bench.iter(|| signature.verify(&message, &pkey))
     });
 }
 

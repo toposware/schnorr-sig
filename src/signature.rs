@@ -50,7 +50,7 @@ impl Signature {
     }
 
     /// Verifies a Schnorr signature
-    pub fn verify(self, message: &[FieldElement], pkey: PublicKey) -> Result<(), SignatureError> {
+    pub fn verify(self, message: &[FieldElement], pkey: &PublicKey) -> Result<(), SignatureError> {
         let e_point = AffinePoint::generator() * self.e;
         let pkey: AffinePoint = pkey.0.into();
 
@@ -126,7 +126,7 @@ mod test {
         let pkey = PublicKey::from_private_key(skey);
 
         let signature = Signature::sign(&message, &skey, OsRng);
-        assert!(signature.verify(&message, pkey).is_ok());
+        assert!(signature.verify(&message, &pkey).is_ok());
     }
 
     #[test]
@@ -144,7 +144,7 @@ mod test {
         {
             let mut wrong_message = message;
             wrong_message[4] = FieldElement::zero();
-            assert!(signature.verify(&wrong_message, pkey).is_err());
+            assert!(signature.verify(&wrong_message, &pkey).is_err());
         }
 
         {
@@ -152,7 +152,7 @@ mod test {
                 x: FieldElement::zero(),
                 e: signature.e,
             };
-            assert!(wrong_signature_1.verify(&message, pkey).is_err());
+            assert!(wrong_signature_1.verify(&message, &pkey).is_err());
         }
 
         {
@@ -160,7 +160,7 @@ mod test {
                 x: signature.x,
                 e: Scalar::zero(),
             };
-            assert!(wrong_signature_2.verify(&message, pkey).is_err());
+            assert!(wrong_signature_2.verify(&message, &pkey).is_err());
         }
     }
 

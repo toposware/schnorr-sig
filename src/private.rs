@@ -55,6 +55,23 @@ mod tests {
     use super::*;
     use rand_core::OsRng;
 
+    use crate::PublicKey;
+
+    #[test]
+    fn test_signature() {
+        let mut rng = OsRng;
+        let mut message = [FieldElement::zero(); 6];
+        for message_chunk in message.iter_mut().skip(2) {
+            *message_chunk = FieldElement::random(&mut rng);
+        }
+
+        let skey = PrivateKey::new(OsRng);
+        let pkey = PublicKey::from_private_key(skey);
+
+        let signature = skey.sign(&message, &mut rng);
+        assert!(signature.verify(&message, &pkey).is_ok());
+    }
+
     #[test]
     fn test_encoding() {
         assert_eq!(

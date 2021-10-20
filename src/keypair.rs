@@ -75,10 +75,10 @@ impl KeyPair {
     /// Verifies a signature against a message and this key pair
     pub fn verify_signature(
         self,
-        signature: Signature,
+        signature: &Signature,
         message: &[FieldElement],
     ) -> Result<(), SignatureError> {
-        signature.verify(message, self.public_key)
+        signature.verify(message, &self.public_key)
     }
 }
 
@@ -87,6 +87,21 @@ mod tests {
     use super::*;
     use rand_core::OsRng;
     use stark_curve::Scalar;
+
+    #[test]
+    fn test_signature() {
+        let mut rng = OsRng;
+        let mut message = [FieldElement::zero(); 6];
+        for message_chunk in message.iter_mut().skip(2) {
+            *message_chunk = FieldElement::random(&mut rng);
+        }
+
+        let skey = PrivateKey::new(OsRng);
+        let key_pair = KeyPair::from_private_key(skey);
+
+        let signature = key_pair.sign(&message, &mut rng);
+        assert!(key_pair.verify_signature(&signature, &message).is_ok());
+    }
 
     #[test]
     fn test_encoding() {
