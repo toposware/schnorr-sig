@@ -39,7 +39,7 @@ impl Signature {
         let h_bits = h_bytes.as_bits::<Lsb0>();
 
         // Reconstruct a scalar from the binary sequence of h
-        let h_scalar = Scalar::from_bits_vartime(h_bits);
+        let h_scalar = Scalar::from_bits(h_bits);
 
         let e = r - skey.0 * h_scalar;
         Signature {
@@ -58,7 +58,7 @@ impl Signature {
         let h_bits = h_bytes.as_bits::<Lsb0>();
 
         // Reconstruct a scalar from the binary sequence of h
-        let h_scalar = Scalar::from_bits_vartime(h_bits);
+        let h_scalar = Scalar::from_bits(h_bits);
 
         let h_pubkey_point = pkey * h_scalar;
 

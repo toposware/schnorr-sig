@@ -5,6 +5,7 @@ use super::error::SignatureError;
 use super::{PrivateKey, Signature};
 
 use stark_curve::{FieldElement, ProjectivePoint};
+use subtle::CtOption;
 
 /// A private key
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -24,7 +25,7 @@ impl PublicKey {
     }
 
     /// Constructs a private key from an array of bytes
-    pub fn from_bytes(bytes: &[u8; 32]) -> Option<Self> {
+    pub fn from_bytes(bytes: &[u8; 32]) -> CtOption<Self> {
         ProjectivePoint::from_compressed(bytes).map(PublicKey)
     }
 
