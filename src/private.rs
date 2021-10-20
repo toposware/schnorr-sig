@@ -1,8 +1,10 @@
 //! This module provides a `PrivateKey` wrapping
 //! struct around a `Scalar` element.
 
+use super::Signature;
+
 use rand_core::{CryptoRng, RngCore};
-use stark_curve::Scalar;
+use stark_curve::{FieldElement, Scalar};
 use subtle::{Choice, ConditionallySelectable, CtOption};
 
 /// A private key
@@ -40,6 +42,11 @@ impl PrivateKey {
     /// Constructs a private key from an array of bytes
     pub fn from_bytes(bytes: &[u8; 32]) -> CtOption<Self> {
         Scalar::from_bytes(bytes).and_then(|s| CtOption::new(PrivateKey(s), Choice::from(1u8)))
+    }
+
+    /// Computes a Schnorr signature
+    pub fn sign(&self, message: &[FieldElement], mut rng: impl CryptoRng + RngCore) -> Signature {
+        Signature::sign(message, self, &mut rng)
     }
 }
 

@@ -19,7 +19,7 @@ fn criterion_benchmark(c: &mut Criterion) {
 
         let skey = PrivateKey::new(OsRng);
 
-        bench.iter(|| Signature::sign(&message, skey, OsRng))
+        bench.iter(|| Signature::sign(&message, &skey, OsRng))
     });
 
     c.bench_function("verify", |bench| {
@@ -31,7 +31,7 @@ fn criterion_benchmark(c: &mut Criterion) {
         let skey = PrivateKey::new(OsRng);
         let pkey = PublicKey::from_private_key(skey);
 
-        let signature = Signature::sign(&message, skey, OsRng);
+        let signature = Signature::sign(&message, &skey, OsRng);
 
         bench.iter(|| signature.verify(&message, pkey))
     });

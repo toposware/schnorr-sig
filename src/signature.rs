@@ -29,7 +29,7 @@ impl Signature {
     /// Computes a Schnorr signature
     pub fn sign(
         message: &[FieldElement],
-        skey: PrivateKey,
+        skey: &PrivateKey,
         mut rng: impl CryptoRng + RngCore,
     ) -> Self {
         let r = Scalar::random(&mut rng);
@@ -94,7 +94,10 @@ impl Signature {
     }
 }
 
-fn hash_message(input: [FieldElement; 2], message: &[FieldElement]) -> [FieldElement; 2] {
+pub(crate) fn hash_message(
+    input: [FieldElement; 2],
+    message: &[FieldElement],
+) -> [FieldElement; 2] {
     let mut h = RescueHash::digest(&input);
     let mut chunk = [FieldElement::zero(), FieldElement::zero()];
 
@@ -122,7 +125,7 @@ mod test {
         let skey = PrivateKey::new(OsRng);
         let pkey = PublicKey::from_private_key(skey);
 
-        let signature = Signature::sign(&message, skey, OsRng);
+        let signature = Signature::sign(&message, &skey, OsRng);
         assert!(signature.verify(&message, pkey).is_ok());
     }
 
@@ -136,7 +139,7 @@ mod test {
         let skey = PrivateKey::new(OsRng);
         let pkey = PublicKey::from_private_key(skey);
 
-        let signature = Signature::sign(&message, skey, OsRng);
+        let signature = Signature::sign(&message, &skey, OsRng);
 
         {
             let mut wrong_message = message;

@@ -67,6 +67,11 @@ impl KeyPair {
         })
     }
 
+    /// Computes a Schnorr signature
+    pub fn sign(&self, message: &[FieldElement], mut rng: impl CryptoRng + RngCore) -> Signature {
+        Signature::sign(message, &self.private_key, &mut rng)
+    }
+
     /// Verifies a signature against a message and this key pair
     pub fn verify_signature(
         self,
