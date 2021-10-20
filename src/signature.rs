@@ -11,6 +11,7 @@ use hash::{
 };
 use rand_core::{CryptoRng, RngCore};
 use stark_curve::{AffinePoint, FieldElement, Scalar};
+use subtle::{Choice, CtOption};
 
 /// A Schnorr signature not attached to its message.
 // TODO: should we include the signed message as part
@@ -69,6 +70,27 @@ impl Signature {
         } else {
             Err(SignatureError::InvalidSignature)
         }
+    }
+
+    /// Converts this signature to an array of bytes
+    pub fn to_bytes(&self) -> [u8; 64] {
+        let mut output = [0u8; 64];
+        output[0..32].copy_from_slice(&self.x.to_bytes());
+        output[32..64].copy_from_slice(&self.e.to_bytes());
+
+        output
+    }
+
+    /// Constructs a signature from an array of bytes
+    pub fn from_bytes(bytes: &[u8; 64]) -> CtOption<Self> {
+        let mut array = [0u8; 32];
+        array.copy_from_slice(&bytes[0..32]);
+        let x = FieldElement::from_bytes(&array);
+
+        array.copy_from_slice(&bytes[32..64]);
+        let e = Scalar::from_bytes(&array);
+
+        x.and_then(|x| e.and_then(|e| CtOption::new(Signature { x, e }, Choice::from(1u8))))
     }
 }
 
