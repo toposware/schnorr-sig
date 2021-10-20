@@ -160,4 +160,57 @@ mod test {
             assert!(wrong_signature_2.verify(&message, pkey).is_err());
         }
     }
+
+    #[test]
+    fn test_encoding() {
+        assert_eq!(
+            Signature {
+                x: FieldElement::one(),
+                e: Scalar::zero(),
+            }
+            .to_bytes(),
+            [
+                1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 0, 0
+            ]
+        );
+
+        assert_eq!(
+            Signature {
+                x: FieldElement::zero(),
+                e: Scalar::one(),
+            }
+            .to_bytes(),
+            [
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 0, 0
+            ]
+        );
+
+        // Test random keys encoding
+        let mut rng = OsRng;
+
+        for _ in 0..100 {
+            let sig = Signature {
+                x: FieldElement::random(&mut rng),
+                e: Scalar::random(&mut rng),
+            };
+            let bytes = sig.to_bytes();
+
+            assert_eq!(sig, Signature::from_bytes(&bytes).unwrap());
+        }
+
+        // Test invalid encoding
+        let bytes = [
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+        ];
+        let recovered_sig = Signature::from_bytes(&bytes);
+        assert!(bool::from(recovered_sig.is_none()))
+    }
 }

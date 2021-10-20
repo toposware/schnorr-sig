@@ -76,3 +76,39 @@ impl KeyPair {
         signature.verify(message, self.public_key)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rand_core::OsRng;
+    use stark_curve::Scalar;
+
+    #[test]
+    fn test_encoding() {
+        assert_eq!(
+            KeyPair::from_private_key(PrivateKey::from_scalar(Scalar::zero())).to_bytes(),
+            [
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0
+            ]
+        );
+
+        assert_eq!(
+            KeyPair::from_private_key(PrivateKey::from_scalar(Scalar::one())).to_bytes(),
+            [
+                1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0
+            ]
+        );
+
+        // Test random key pairs encoding
+        let mut rng = OsRng;
+
+        for _ in 0..100 {
+            let key_pair = KeyPair::new(&mut rng);
+            let bytes = key_pair.to_bytes();
+
+            assert_eq!(key_pair, KeyPair::from_bytes(&bytes).unwrap());
+        }
+    }
+}

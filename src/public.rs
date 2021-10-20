@@ -19,12 +19,12 @@ impl PublicKey {
         PublicKey(pkey)
     }
 
-    /// Converts this private key to an array of bytes
+    /// Converts this public key to an array of bytes
     pub fn to_bytes(&self) -> [u8; 32] {
         self.0.to_compressed()
     }
 
-    /// Constructs a private key from an array of bytes
+    /// Constructs a public key from an array of bytes
     pub fn from_bytes(bytes: &[u8; 32]) -> CtOption<Self> {
         ProjectivePoint::from_compressed(bytes).map(PublicKey)
     }
@@ -36,5 +36,33 @@ impl PublicKey {
         message: &[FieldElement],
     ) -> Result<(), SignatureError> {
         signature.verify(message, self)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rand_core::OsRng;
+    use stark_curve::Scalar;
+
+    #[test]
+    fn test_encoding() {
+        assert_eq!(
+            PublicKey::from_private_key(PrivateKey::from_scalar(Scalar::zero())).to_bytes(),
+            [
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 192
+            ]
+        );
+
+        // Test random keys encoding
+        let mut rng = OsRng;
+
+        for _ in 0..100 {
+            let key = PrivateKey::new(&mut rng);
+            let bytes = key.to_bytes();
+
+            assert_eq!(key, PrivateKey::from_bytes(&bytes).unwrap());
+        }
     }
 }

@@ -42,3 +42,47 @@ impl PrivateKey {
         Scalar::from_bytes(bytes).and_then(|s| CtOption::new(PrivateKey(s), Choice::from(1u8)))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rand_core::OsRng;
+
+    #[test]
+    fn test_encoding() {
+        assert_eq!(
+            PrivateKey::from_scalar(Scalar::zero()).to_bytes(),
+            [
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0
+            ]
+        );
+
+        assert_eq!(
+            PrivateKey::from_scalar(Scalar::one()).to_bytes(),
+            [
+                1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0
+            ]
+        );
+
+        // Test random keys encoding
+        let mut rng = OsRng;
+
+        for _ in 0..100 {
+            let key = PrivateKey::new(&mut rng);
+            let bytes = key.to_bytes();
+
+            assert_eq!(key, PrivateKey::from_bytes(&bytes).unwrap());
+        }
+
+        // Test invalid encoding
+        let bytes = [
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+            0xff, 0xff, 0xff, 0xff,
+        ];
+        let recovered_key = PrivateKey::from_bytes(&bytes);
+        assert!(bool::from(recovered_key.is_none()))
+    }
+}
