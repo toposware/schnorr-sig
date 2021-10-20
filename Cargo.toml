@@ -12,14 +12,17 @@ bitvec = { version = "0.22", default-features = false }
 getrandom = { version = "0.2", default-features = false, features = ["js"] }
 hash = { git = "https://github.com/ToposWare/hash.git", branch = "main", default-features = false }
 rand_core = { version = "0.6", default-features = false, features = ["getrandom"] }
+serde = { version = "1.0", default-features = false, optional = true, features = ["derive"] }
 stark-curve = { git = "https://github.com/ToposWare/stark-curve.git", branch = "main", default-features = false }
 subtle = { version = "2.4", default-features = false }
 
 [dev-dependencies]
+bincode = "1"
 criterion = "0.3"
 
 [features]
-default = ["std"]
+default = ["std", "serialize"]
+serialize = ["serde", "stark-curve/serialize"]
 std = []
 
 [[bench]]

@@ -13,7 +13,7 @@ use schnorr_sig::Signature;
 fn criterion_benchmark(c: &mut Criterion) {
     c.bench_function("sign", |bench| {
         let mut message = [FieldElement::zero(); 6];
-        for message_chunk in message.iter_mut().skip(2) {
+        for message_chunk in message.iter_mut() {
             *message_chunk = FieldElement::random(OsRng);
         }
 
@@ -24,7 +24,7 @@ fn criterion_benchmark(c: &mut Criterion) {
 
     c.bench_function("verify", |bench| {
         let mut message = [FieldElement::zero(); 6];
-        for message_chunk in message.iter_mut().skip(2) {
+        for message_chunk in message.iter_mut() {
             *message_chunk = FieldElement::random(OsRng);
         }
 

@@ -13,10 +13,15 @@ use rand_core::{CryptoRng, RngCore};
 use stark_curve::{AffinePoint, FieldElement, Scalar};
 use subtle::{Choice, CtOption};
 
+#[cfg(feature = "serialize")]
+use serde::{Deserialize, Serialize};
+
 /// A Schnorr signature not attached to its message.
 // TODO: should we include the signed message as part
 // of the Struct, or have it in a wrapping struct?
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[cfg(feature = "serialize")]
+#[derive(Deserialize, Serialize)]
 pub struct Signature {
     /// The affine coordinate of the random point generated during signing
     pub x: FieldElement,
@@ -118,7 +123,7 @@ mod test {
     #[test]
     fn test_signature() {
         let mut message = [FieldElement::zero(); 6];
-        for message_chunk in message.iter_mut().skip(2) {
+        for message_chunk in message.iter_mut() {
             *message_chunk = FieldElement::random(OsRng);
         }
 
@@ -132,7 +137,7 @@ mod test {
     #[test]
     fn test_invalid_signature() {
         let mut message = [FieldElement::zero(); 6];
-        for message_chunk in message.iter_mut().skip(2) {
+        for message_chunk in message.iter_mut() {
             *message_chunk = FieldElement::random(OsRng);
         }
 
@@ -215,5 +220,40 @@ mod test {
         ];
         let recovered_sig = Signature::from_bytes(&bytes);
         assert!(bool::from(recovered_sig.is_none()))
+    }
+
+    #[test]
+    #[cfg(feature = "serialize")]
+    fn test_serde() {
+        let mut rng = OsRng;
+        let mut message = [FieldElement::zero(); 6];
+        for message_chunk in message.iter_mut() {
+            *message_chunk = FieldElement::random(OsRng);
+        }
+
+        let skey = PrivateKey::new(&mut rng);
+
+        let signature = Signature::sign(&message, &skey, &mut rng);
+        let encoded = bincode::serialize(&signature).unwrap();
+        let parsed: Signature = bincode::deserialize(&encoded).unwrap();
+        assert_eq!(parsed, signature);
+
+        // Check that the encoding is 64 bytes exactly
+        assert_eq!(encoded.len(), 64);
+
+        // Check that the encoding itself matches the usual one
+        assert_eq!(
+            signature,
+            bincode::deserialize(&signature.to_bytes()).unwrap()
+        );
+
+        // Check that invalid encodings fail
+        let signature = Signature::sign(&message, &skey, OsRng);
+        let mut encoded = bincode::serialize(&signature).unwrap();
+        encoded[63] = 127;
+        assert!(bincode::deserialize::<Signature>(&encoded).is_err());
+
+        let encoded = bincode::serialize(&signature).unwrap();
+        assert!(bincode::deserialize::<Signature>(&encoded[0..63]).is_err());
     }
 }

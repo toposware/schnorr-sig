@@ -7,8 +7,13 @@ use super::{PrivateKey, Signature};
 use stark_curve::{FieldElement, ProjectivePoint};
 use subtle::CtOption;
 
+#[cfg(feature = "serialize")]
+use serde::{Deserialize, Serialize};
+
 /// A private key
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[cfg(feature = "serialize")]
+#[derive(Deserialize, Serialize)]
 pub struct PublicKey(pub(crate) ProjectivePoint);
 
 impl PublicKey {
@@ -49,7 +54,7 @@ mod tests {
     fn test_signature() {
         let mut rng = OsRng;
         let mut message = [FieldElement::zero(); 6];
-        for message_chunk in message.iter_mut().skip(2) {
+        for message_chunk in message.iter_mut() {
             *message_chunk = FieldElement::random(&mut rng);
         }
 
@@ -79,5 +84,30 @@ mod tests {
 
             assert_eq!(key, PrivateKey::from_bytes(&bytes).unwrap());
         }
+    }
+
+    #[test]
+    #[cfg(feature = "serialize")]
+    fn test_serde() {
+        let mut rng = OsRng;
+        let pkey = PublicKey::from_private_key(PrivateKey::new(&mut rng));
+        let encoded = bincode::serialize(&pkey).unwrap();
+        let parsed: PublicKey = bincode::deserialize(&encoded).unwrap();
+        assert_eq!(parsed, pkey);
+
+        // Check that the encoding is 32 bytes exactly
+        assert_eq!(encoded.len(), 32);
+
+        // Check that the encoding itself matches the usual one
+        assert_eq!(pkey, bincode::deserialize(&pkey.to_bytes()).unwrap());
+
+        // Check that invalid encodings fail
+        let pkey = PublicKey::from_private_key(PrivateKey::new(&mut rng));
+        let mut encoded = bincode::serialize(&pkey).unwrap();
+        encoded[31] = 127;
+        assert!(bincode::deserialize::<PublicKey>(&encoded).is_err());
+
+        let encoded = bincode::serialize(&pkey).unwrap();
+        assert!(bincode::deserialize::<PublicKey>(&encoded[0..31]).is_err());
     }
 }

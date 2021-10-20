@@ -7,8 +7,13 @@ use rand_core::{CryptoRng, RngCore};
 use stark_curve::{FieldElement, Scalar};
 use subtle::{Choice, ConditionallySelectable, CtOption};
 
+#[cfg(feature = "serialize")]
+use serde::{Deserialize, Serialize};
+
 /// A private key
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+#[cfg(feature = "serialize")]
+#[derive(Deserialize, Serialize)]
 pub struct PrivateKey(pub(crate) Scalar);
 
 impl ConditionallySelectable for PrivateKey {
@@ -61,7 +66,7 @@ mod tests {
     fn test_signature() {
         let mut rng = OsRng;
         let mut message = [FieldElement::zero(); 6];
-        for message_chunk in message.iter_mut().skip(2) {
+        for message_chunk in message.iter_mut() {
             *message_chunk = FieldElement::random(&mut rng);
         }
 
@@ -108,5 +113,30 @@ mod tests {
         ];
         let recovered_key = PrivateKey::from_bytes(&bytes);
         assert!(bool::from(recovered_key.is_none()))
+    }
+
+    #[test]
+    #[cfg(feature = "serialize")]
+    fn test_serde() {
+        let mut rng = OsRng;
+        let skey = PrivateKey::new(&mut rng);
+        let encoded = bincode::serialize(&skey).unwrap();
+        let parsed: PrivateKey = bincode::deserialize(&encoded).unwrap();
+        assert_eq!(parsed, skey);
+
+        // Check that the encoding is 32 bytes exactly
+        assert_eq!(encoded.len(), 32);
+
+        // Check that the encoding itself matches the usual one
+        assert_eq!(skey, bincode::deserialize(&skey.to_bytes()).unwrap());
+
+        // Check that invalid encodings fail
+        let skey = PrivateKey::new(&mut rng);
+        let mut encoded = bincode::serialize(&skey).unwrap();
+        encoded[31] = 127;
+        assert!(bincode::deserialize::<PrivateKey>(&encoded).is_err());
+
+        let encoded = bincode::serialize(&skey).unwrap();
+        assert!(bincode::deserialize::<PrivateKey>(&encoded[0..31]).is_err());
     }
 }

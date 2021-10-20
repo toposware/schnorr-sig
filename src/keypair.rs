@@ -8,6 +8,11 @@ use rand_core::{CryptoRng, RngCore};
 use stark_curve::FieldElement;
 use subtle::{Choice, CtOption};
 
+#[cfg(feature = "serialize")]
+use serde::de::Visitor;
+#[cfg(feature = "serialize")]
+use serde::{self, Deserialize, Deserializer, Serialize, Serializer};
+
 /// A KeyPair
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct KeyPair {
@@ -82,6 +87,63 @@ impl KeyPair {
     }
 }
 
+// Serde Serialize and Deserialize traits are not directly derived
+// as we would end up with a serialization twice larger than the
+// byte encoding, which skips the public_key component and reconstructs
+// it when decoding.
+#[cfg(feature = "serialize")]
+impl Serialize for KeyPair {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        use serde::ser::SerializeTuple;
+        let mut tup = serializer.serialize_tuple(32)?;
+        for byte in self.to_bytes().iter() {
+            tup.serialize_element(byte)?;
+        }
+        tup.end()
+    }
+}
+
+#[cfg(feature = "serialize")]
+impl<'de> Deserialize<'de> for KeyPair {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        struct KeyPairVisitor;
+
+        impl<'de> Visitor<'de> for KeyPairVisitor {
+            type Value = KeyPair;
+
+            fn expecting(&self, formatter: &mut core::fmt::Formatter) -> core::fmt::Result {
+                formatter.write_str("a valid field element")
+            }
+
+            fn visit_seq<A>(self, mut seq: A) -> Result<KeyPair, A::Error>
+            where
+                A: serde::de::SeqAccess<'de>,
+            {
+                let mut bytes = [0u8; 32];
+                for (i, byte) in bytes.iter_mut().enumerate() {
+                    *byte = seq
+                        .next_element()?
+                        .ok_or_else(|| serde::de::Error::invalid_length(i, &"expected 32 bytes"))?;
+                }
+                let scalar = KeyPair::from_bytes(&bytes);
+                if bool::from(scalar.is_none()) {
+                    Err(serde::de::Error::custom("decompression failed"))
+                } else {
+                    Ok(scalar.unwrap())
+                }
+            }
+        }
+
+        deserializer.deserialize_tuple(32, KeyPairVisitor)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -92,7 +154,7 @@ mod tests {
     fn test_signature() {
         let mut rng = OsRng;
         let mut message = [FieldElement::zero(); 6];
-        for message_chunk in message.iter_mut().skip(2) {
+        for message_chunk in message.iter_mut() {
             *message_chunk = FieldElement::random(&mut rng);
         }
 
@@ -130,5 +192,33 @@ mod tests {
 
             assert_eq!(key_pair, KeyPair::from_bytes(&bytes).unwrap());
         }
+    }
+
+    #[test]
+    #[cfg(feature = "serialize")]
+    fn test_serde() {
+        let mut rng = OsRng;
+        let key_pair = KeyPair::from_private_key(PrivateKey::new(&mut rng));
+        let encoded = bincode::serialize(&key_pair).unwrap();
+        let parsed: KeyPair = bincode::deserialize(&encoded).unwrap();
+        assert_eq!(parsed, key_pair);
+
+        // Check that the encoding is 32 bytes exactly
+        assert_eq!(encoded.len(), 32);
+
+        // Check that the encoding itself matches the usual one
+        assert_eq!(
+            key_pair,
+            bincode::deserialize(&key_pair.to_bytes()).unwrap()
+        );
+
+        // Check that invalid encodings fail
+        let key_pair = KeyPair::from_private_key(PrivateKey::new(&mut rng));
+        let mut encoded = bincode::serialize(&key_pair).unwrap();
+        encoded[31] = 127;
+        assert!(bincode::deserialize::<KeyPair>(&encoded).is_err());
+
+        let encoded = bincode::serialize(&key_pair).unwrap();
+        assert!(bincode::deserialize::<KeyPair>(&encoded[0..31]).is_err());
     }
 }
