@@ -10,6 +10,7 @@ use hash::{
     traits::Hasher,
 };
 use rand_core::{CryptoRng, RngCore};
+use stark_curve::group::ff::Field;
 use stark_curve::{AffinePoint, FieldElement, Scalar};
 use subtle::{Choice, CtOption};
 
@@ -20,8 +21,7 @@ use serde::{Deserialize, Serialize};
 // TODO: should we include the signed message as part
 // of the Struct, or have it in a wrapping struct?
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-#[cfg(feature = "serialize")]
-#[derive(Deserialize, Serialize)]
+#[cfg_attr(feature = "serialize", derive(Deserialize, Serialize))]
 pub struct Signature {
     /// The affine coordinate of the random point generated during signing
     pub x: FieldElement,

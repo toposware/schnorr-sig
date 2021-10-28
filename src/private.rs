@@ -4,6 +4,7 @@
 use super::Signature;
 
 use rand_core::{CryptoRng, RngCore};
+use stark_curve::group::ff::Field;
 use stark_curve::{FieldElement, Scalar};
 use subtle::{Choice, ConditionallySelectable, CtOption};
 
@@ -12,8 +13,7 @@ use serde::{Deserialize, Serialize};
 
 /// A private key
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
-#[cfg(feature = "serialize")]
-#[derive(Deserialize, Serialize)]
+#[cfg_attr(feature = "serialize", derive(Deserialize, Serialize))]
 pub struct PrivateKey(pub(crate) Scalar);
 
 impl ConditionallySelectable for PrivateKey {

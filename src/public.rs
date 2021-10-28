@@ -12,8 +12,7 @@ use serde::{Deserialize, Serialize};
 
 /// A private key
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-#[cfg(feature = "serialize")]
-#[derive(Deserialize, Serialize)]
+#[cfg_attr(feature = "serialize", derive(Deserialize, Serialize))]
 pub struct PublicKey(pub(crate) ProjectivePoint);
 
 impl PublicKey {
@@ -48,6 +47,7 @@ impl PublicKey {
 mod tests {
     use super::*;
     use rand_core::OsRng;
+    use stark_curve::group::ff::Field;
     use stark_curve::Scalar;
 
     #[test]

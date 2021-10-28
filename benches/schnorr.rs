@@ -3,6 +3,7 @@ extern crate criterion;
 
 use criterion::Criterion;
 use rand_core::OsRng;
+use stark_curve::group::ff::Field;
 use stark_curve::FieldElement;
 
 extern crate schnorr_sig;

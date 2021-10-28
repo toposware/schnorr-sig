@@ -148,6 +148,7 @@ impl<'de> Deserialize<'de> for KeyPair {
 mod tests {
     use super::*;
     use rand_core::OsRng;
+    use stark_curve::group::ff::Field;
     use stark_curve::Scalar;
 
     #[test]
