@@ -89,7 +89,7 @@
 #![deny(missing_debug_implementations)]
 #![deny(missing_docs)]
 #![deny(unsafe_code)]
-#![cfg_attr(not(feature = "std"), no_std)]
+#![no_std]
 
 mod error;
 
