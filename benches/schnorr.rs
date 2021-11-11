@@ -1,10 +1,10 @@
 #[macro_use]
 extern crate criterion;
 
+use cheetah::group::ff::Field;
+use cheetah::Fp;
 use criterion::Criterion;
 use rand_core::OsRng;
-use stark_curve::group::ff::Field;
-use stark_curve::FieldElement;
 
 extern crate schnorr_sig;
 use schnorr_sig::PrivateKey;
@@ -12,27 +12,29 @@ use schnorr_sig::PublicKey;
 use schnorr_sig::Signature;
 
 fn criterion_benchmark(c: &mut Criterion) {
+    let mut rng = OsRng;
+
     c.bench_function("sign", |bench| {
-        let mut message = [FieldElement::zero(); 6];
+        let mut message = [Fp::zero(); 26];
         for message_chunk in message.iter_mut() {
-            *message_chunk = FieldElement::random(OsRng);
+            *message_chunk = Fp::random(&mut rng);
         }
 
-        let skey = PrivateKey::new(OsRng);
+        let skey = PrivateKey::new(&mut rng);
 
-        bench.iter(|| Signature::sign(&message, &skey, OsRng))
+        bench.iter(|| Signature::sign(&message, &skey, &mut rng))
     });
 
     c.bench_function("verify", |bench| {
-        let mut message = [FieldElement::zero(); 6];
+        let mut message = [Fp::zero(); 26];
         for message_chunk in message.iter_mut() {
-            *message_chunk = FieldElement::random(OsRng);
+            *message_chunk = Fp::random(&mut rng);
         }
 
-        let skey = PrivateKey::new(OsRng);
+        let skey = PrivateKey::new(&mut rng);
         let pkey = PublicKey::from_private_key(skey);
 
-        let signature = Signature::sign(&message, &skey, OsRng);
+        let signature = Signature::sign(&message, &skey, &mut rng);
 
         bench.iter(|| signature.verify(&message, &pkey))
     });

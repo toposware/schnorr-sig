@@ -3,9 +3,9 @@
 
 use super::Signature;
 
+use cheetah::group::ff::Field;
+use cheetah::{Fp, Scalar};
 use rand_core::{CryptoRng, RngCore};
-use stark_curve::group::ff::Field;
-use stark_curve::{FieldElement, Scalar};
 use subtle::{Choice, ConditionallySelectable, CtOption};
 
 #[cfg(feature = "serialize")]
@@ -50,7 +50,7 @@ impl PrivateKey {
     }
 
     /// Computes a Schnorr signature
-    pub fn sign(&self, message: &[FieldElement], mut rng: impl CryptoRng + RngCore) -> Signature {
+    pub fn sign(&self, message: &[Fp], mut rng: impl CryptoRng + RngCore) -> Signature {
         Signature::sign(message, self, &mut rng)
     }
 }
@@ -65,12 +65,13 @@ mod tests {
     #[test]
     fn test_signature() {
         let mut rng = OsRng;
-        let mut message = [FieldElement::zero(); 6];
+
+        let mut message = [Fp::zero(); 42];
         for message_chunk in message.iter_mut() {
-            *message_chunk = FieldElement::random(&mut rng);
+            *message_chunk = Fp::random(&mut rng);
         }
 
-        let skey = PrivateKey::new(OsRng);
+        let skey = PrivateKey::new(&mut rng);
         let pkey = PublicKey::from_private_key(skey);
 
         let signature = skey.sign(&message, &mut rng);

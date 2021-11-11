@@ -10,10 +10,10 @@ edition = "2018"
 [dependencies]
 bitvec = { version = "0.22", default-features = false }
 getrandom = { version = "0.2", default-features = false, features = ["js"] }
-hash = { git = "https://github.com/ToposWare/hash.git", branch = "main", default-features = false }
+hash = { git = "https://github.com/ToposWare/hash.git", branch = "main", default-features = false, features = ["f63"] }
 rand_core = { version = "0.6", default-features = false, features = ["getrandom"] }
 serde = { version = "1.0", default-features = false, optional = true, features = ["derive"] }
-stark-curve = { git = "https://github.com/ToposWare/stark-curve.git", branch = "main", default-features = false }
+cheetah = { git = "https://github.com/ToposWare/cheetah.git", branch = "main", default-features = false }
 subtle = { version = "2.4", default-features = false }
 
 [dev-dependencies]
@@ -22,7 +22,7 @@ criterion = "0.3"
 
 [features]
 default = ["serialize"]
-serialize = ["serde", "stark-curve/serialize"]
+serialize = ["serde", "cheetah/serialize"]
 
 [[bench]]
 name = "schnorr"

@@ -4,8 +4,8 @@
 use super::error::SignatureError;
 use super::{PrivateKey, PublicKey, Signature};
 
+use cheetah::Fp;
 use rand_core::{CryptoRng, RngCore};
-use stark_curve::FieldElement;
 use subtle::{Choice, CtOption};
 
 #[cfg(feature = "serialize")]
@@ -73,7 +73,7 @@ impl KeyPair {
     }
 
     /// Computes a Schnorr signature
-    pub fn sign(&self, message: &[FieldElement], mut rng: impl CryptoRng + RngCore) -> Signature {
+    pub fn sign(&self, message: &[Fp], mut rng: impl CryptoRng + RngCore) -> Signature {
         Signature::sign(message, &self.private_key, &mut rng)
     }
 
@@ -81,7 +81,7 @@ impl KeyPair {
     pub fn verify_signature(
         self,
         signature: &Signature,
-        message: &[FieldElement],
+        message: &[Fp],
     ) -> Result<(), SignatureError> {
         signature.verify(message, &self.public_key)
     }
@@ -147,19 +147,20 @@ impl<'de> Deserialize<'de> for KeyPair {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use cheetah::group::ff::Field;
+    use cheetah::Scalar;
     use rand_core::OsRng;
-    use stark_curve::group::ff::Field;
-    use stark_curve::Scalar;
 
     #[test]
     fn test_signature() {
         let mut rng = OsRng;
-        let mut message = [FieldElement::zero(); 6];
+
+        let mut message = [Fp::zero(); 42];
         for message_chunk in message.iter_mut() {
-            *message_chunk = FieldElement::random(&mut rng);
+            *message_chunk = Fp::random(&mut rng);
         }
 
-        let skey = PrivateKey::new(OsRng);
+        let skey = PrivateKey::new(&mut rng);
         let key_pair = KeyPair::from_private_key(skey);
 
         let signature = key_pair.sign(&message, &mut rng);
