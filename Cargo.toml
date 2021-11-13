@@ -21,9 +21,8 @@ bincode = "1"
 criterion = "0.3"
 
 [features]
-default = ["std", "serialize"]
+default = ["serialize"]
 serialize = ["serde", "stark-curve/serialize"]
-std = []
 
 [[bench]]
 name = "schnorr"
