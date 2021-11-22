@@ -8,7 +8,7 @@ where
 - `v^3 + v + 1 = 0` is the polynomial defining the cubic extension Fp6 over Fp2.
 and implemented [here](https://github.com/ToposWare/cheetah).
 
-* This implementation does not require the Rust standard library
+* This implementation does not rely on the Rust standard library. The `std` feature is only used to indicate whether to use the `std` or the `alloc` crate for the underlying `hash` dependency.
 
 ## Features
 
