@@ -1,5 +1,5 @@
 //! This crate provides an implementation of a custom Schnorr
-//! signature with internal Rescue hash on a 252-bit field.
+//! signature with internal Rescue hash on a 63-bit field.
 
 //! # Usage
 //!
@@ -94,16 +94,16 @@
 mod error;
 
 /// The private key module.
-pub mod private;
+mod private;
 
 /// The public key module.
-pub mod public;
+mod public;
 
 /// The key pair module.
-pub mod keypair;
+mod keypair;
 
 /// The Schnorr signature module.
-pub mod signature;
+mod signature;
 
 pub use private::PrivateKey;
 pub use public::PublicKey;
