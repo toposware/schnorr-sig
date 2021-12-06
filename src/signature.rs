@@ -51,7 +51,6 @@ impl Signature {
 
     /// Verifies a Schnorr signature
     pub fn verify(self, message: &[Fp], pkey: &PublicKey) -> Result<(), SignatureError> {
-        let e_point = AffinePoint::generator() * self.e;
         let pkey: AffinePoint = pkey.0.into();
 
         let h = hash_message(self.x, message);
@@ -60,11 +59,15 @@ impl Signature {
         // Reconstruct a scalar from the binary sequence of h
         let h_scalar = Scalar::from_bits(h_bits);
 
-        let h_pubkey_point = pkey * h_scalar;
+        // Leverage Straus-Shamir's trick to perform
+        // both scalar multiplications at once.
+        let r = AffinePoint::generator().multiply_double_vartime(
+            &pkey,
+            &self.e.to_bytes(),
+            &h_scalar.to_bytes(),
+        );
 
-        let r_point = AffinePoint::from(e_point + h_pubkey_point);
-
-        if r_point.get_x() == self.x {
+        if r.get_x() == self.x {
             Ok(())
         } else {
             Err(SignatureError::InvalidSignature)
