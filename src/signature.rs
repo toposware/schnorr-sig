@@ -14,6 +14,7 @@ use super::{PrivateKey, PublicKey};
 
 use bitvec::{order::Lsb0, view::AsBits};
 use cheetah::group::ff::Field;
+use cheetah::BASEPOINT_TABLE;
 use cheetah::{AffinePoint, Fp, Fp6, Scalar};
 use hash::{
     rescue_63_14_7::{digest::RescueDigest, hasher::RescueHash},
@@ -42,7 +43,7 @@ impl Signature {
     /// Computes a Schnorr signature
     pub fn sign(message: &[Fp], skey: &PrivateKey, mut rng: impl CryptoRng + RngCore) -> Self {
         let r = Scalar::random(&mut rng);
-        let r_point = AffinePoint::from(AffinePoint::generator() * r);
+        let r_point = AffinePoint::from(&BASEPOINT_TABLE * r);
 
         let h = hash_message(r_point.get_x(), message);
         let h_bits = h.as_bits::<Lsb0>();
@@ -59,20 +60,20 @@ impl Signature {
 
     /// Verifies a Schnorr signature
     pub fn verify(self, message: &[Fp], pkey: &PublicKey) -> Result<(), SignatureError> {
-        let e_point = AffinePoint::generator() * self.e;
-        let pkey: AffinePoint = pkey.0.into();
-
         let h = hash_message(self.x, message);
         let h_bits = h.as_bits::<Lsb0>();
 
         // Reconstruct a scalar from the binary sequence of h
         let h_scalar = Scalar::from_bits(h_bits);
 
-        let h_pubkey_point = pkey * h_scalar;
+        // Leverage faster scalar multiplication through
+        // lookup tables and hardcoded base point table.
+        let r = AffinePoint::from(
+            pkey.0.multiply_vartime(&h_scalar.to_bytes())
+                + BASEPOINT_TABLE.multiply_vartime(&self.e.to_bytes()),
+        );
 
-        let r_point = AffinePoint::from(e_point + h_pubkey_point);
-
-        if r_point.get_x() == self.x {
+        if r.get_x() == self.x {
             Ok(())
         } else {
             Err(SignatureError::InvalidSignature)
