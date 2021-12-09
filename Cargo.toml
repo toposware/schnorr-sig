@@ -21,8 +21,9 @@ bincode = "1"
 criterion = "0.3"
 
 [features]
-default = ["serialize"]
+default = ["serialize", "std"]
 serialize = ["serde", "cheetah/serialize"]
+std = ["hash/std"]
 
 [[bench]]
 name = "schnorr"

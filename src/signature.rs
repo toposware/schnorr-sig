@@ -9,7 +9,7 @@ use cheetah::group::ff::Field;
 use cheetah::{AffinePoint, Fp, Fp6, Scalar};
 use hash::{
     rescue_63_14_7::{digest::RescueDigest, hasher::RescueHash},
-    traits::Hasher,
+    traits::{Digest, Hasher},
 };
 use rand_core::{CryptoRng, RngCore};
 use subtle::{Choice, CtOption};
@@ -37,11 +37,7 @@ impl Signature {
         let r_point = AffinePoint::from(AffinePoint::generator() * r);
 
         let h = hash_message(r_point.get_x(), message);
-        let mut h_bytes = [0u8; 32];
-        for i in 0..4 {
-            h_bytes[8 * i..8 * i + 8].copy_from_slice(&h[i].to_bytes());
-        }
-        let h_bits = h_bytes.as_bits::<Lsb0>();
+        let h_bits = h.as_bits::<Lsb0>();
 
         // Reconstruct a scalar from the binary sequence of h
         let h_scalar = Scalar::from_bits(h_bits);
@@ -59,11 +55,7 @@ impl Signature {
         let pkey: AffinePoint = pkey.0.into();
 
         let h = hash_message(self.x, message);
-        let mut h_bytes = [0u8; 32];
-        for i in 0..4 {
-            h_bytes[8 * i..8 * i + 8].copy_from_slice(&h[i].to_bytes());
-        }
-        let h_bits = h_bytes.as_bits::<Lsb0>();
+        let h_bits = h.as_bits::<Lsb0>();
 
         // Reconstruct a scalar from the binary sequence of h
         let h_scalar = Scalar::from_bits(h_bits);
@@ -102,7 +94,7 @@ impl Signature {
     }
 }
 
-pub(crate) fn hash_message(input: Fp6, message: &[Fp]) -> [Fp; 7] {
+pub(crate) fn hash_message(input: Fp6, message: &[Fp]) -> [u8; 32] {
     let mut h = RescueHash::digest(&<[Fp; 6] as From<Fp6>>::from(input));
     let mut chunk = [Fp::zero(); 7];
 
@@ -112,7 +104,7 @@ pub(crate) fn hash_message(input: Fp6, message: &[Fp]) -> [Fp; 7] {
         h = RescueHash::merge(&[h, digest]);
     }
 
-    h.as_elements()
+    h.as_bytes()
 }
 
 #[cfg(test)]
