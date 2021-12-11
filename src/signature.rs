@@ -99,9 +99,9 @@ impl Signature {
 
 pub(crate) fn hash_message(input: Fp6, message: &[Fp]) -> [u8; 32] {
     let mut h = RescueHash::digest(&<[Fp; 6] as From<Fp6>>::from(input));
-    let mut chunk = [Fp::zero(); 7];
 
     for message_chunk in message.chunks(7) {
+        let mut chunk = [Fp::zero(); 7];
         chunk[0..message_chunk.len()].copy_from_slice(message_chunk);
         let digest = RescueDigest::new(chunk);
         h = RescueHash::merge(&[h, digest]);
