@@ -1,11 +1,15 @@
 [package]
 name = "schnorr-sig"
+description = "Implementation of a STARK-friendly version of Schnorr signatures over the Cheetah curve"
+authors = ["Toposware Developers <dev@toposware.com>"]
+homepage = "https://github.com/ToposWare/schnorr-sig"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/ToposWare/schnorr-sig"
 version = "0.1.0"
-authors = [
-    "Travis Alan Baumbaugh <TABaumbaugh@gmail.com>",
-    "Robin Salen <salenrobin@gmail.com>"
-]
 edition = "2018"
+readme = "README.md"
+categories = ["cryptography", "no-std"]
+keywords = ["cryptography", "crypto", "signature"]
 
 [dependencies]
 bitvec = { version = "0.22", default-features = false }
