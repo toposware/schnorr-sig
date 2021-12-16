@@ -1,6 +1,6 @@
 # Schnorr-sig
 
-This crate provides an ongoing implementation of a modified version of the Schnorr signature protocol, for efficient verification in a STARK AIR program.
+This crate provides an implementation of a modified version of the Schnorr signature protocol, for efficient verification in a STARK AIR program.
 The underlying curve is a custom curve, Cheetah, based on a sextic extension of the the Prime Field Fp with p = 2<sup>62</sup> + 2<sup>56</sup> + 2<sup>55</sup> + 1, and curve equation E(Fp): y<sup>2</sup> = x<sup>3</sup> + x + B, with
 B = `(1200866201009650596 * u + 1935817186716799185) * v^2 + (3999205700308519553 * u + 3518137720867787056) * v + 2508413708960025374 * u + 1526905369741321712`
 where
@@ -9,6 +9,9 @@ where
 and implemented [here](https://github.com/ToposWare/cheetah).
 
 * This implementation does not rely on the Rust standard library. The `std` feature is only used to indicate whether to use the `std` or the `alloc` crate for the underlying `hash` dependency.
+
+**WARNING:** This is an ongoing, prototype implementation subject to changes. In particular, it has not been audited and may contain bugs and security flaws. This implementation is NOT ready for production use.
+
 
 ## Features
 
@@ -23,5 +26,9 @@ See :
 
 ## License
 
-Licensed under
- * TBD
+Licensed under either of
+
+ * Apache License, Version 2.0, ([LICENSE-APACHE](LICENSE-APACHE) or http://www.apache.org/licenses/LICENSE-2.0)
+ * MIT license ([LICENSE-MIT](LICENSE-MIT) or http://opensource.org/licenses/MIT)
+
+at your option.
