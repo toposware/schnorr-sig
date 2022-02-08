@@ -155,7 +155,6 @@ impl<'de> Deserialize<'de> for KeyPair {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use cheetah::group::ff::Field;
     use cheetah::Scalar;
     use rand_core::OsRng;
 

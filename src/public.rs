@@ -12,7 +12,7 @@
 use super::error::SignatureError;
 use super::{PrivateKey, Signature};
 
-use cheetah::{Fp, ProjectivePoint};
+use cheetah::{CompressedPoint, Fp, ProjectivePoint};
 use subtle::CtOption;
 
 #[cfg(feature = "serialize")]
@@ -32,12 +32,12 @@ impl PublicKey {
     }
 
     /// Converts this public key to an array of bytes
-    pub fn to_bytes(&self) -> [u8; 48] {
+    pub fn to_bytes(&self) -> CompressedPoint {
         self.0.to_compressed()
     }
 
     /// Constructs a public key from an array of bytes
-    pub fn from_bytes(bytes: &[u8; 48]) -> CtOption<Self> {
+    pub fn from_bytes(bytes: &CompressedPoint) -> CtOption<Self> {
         ProjectivePoint::from_compressed(bytes).map(PublicKey)
     }
 
@@ -54,7 +54,6 @@ impl PublicKey {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use cheetah::group::ff::Field;
     use cheetah::Scalar;
     use rand_core::OsRng;
 
@@ -77,10 +76,12 @@ mod tests {
     #[test]
     fn test_encoding() {
         assert_eq!(
-            PublicKey::from_private_key(PrivateKey::from_scalar(Scalar::zero())).to_bytes(),
+            PublicKey::from_private_key(PrivateKey::from_scalar(Scalar::zero()))
+                .to_bytes()
+                .0,
             [
-                0, 0, 0, 0, 0, 0, 0, 128, 0, 0, 0, 0, 0, 0, 0, 128, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 128
             ]
         );
 
@@ -104,19 +105,19 @@ mod tests {
         let parsed: PublicKey = bincode::deserialize(&encoded).unwrap();
         assert_eq!(parsed, pkey);
 
-        // Check that the encoding is 48 bytes exactly
-        assert_eq!(encoded.len(), 48);
+        // Check that the encoding is 49 bytes exactly
+        assert_eq!(encoded.len(), 49);
 
         // Check that the encoding itself matches the usual one
-        assert_eq!(pkey, bincode::deserialize(&pkey.to_bytes()).unwrap());
+        assert_eq!(pkey, bincode::deserialize(&pkey.to_bytes().0).unwrap());
 
         // Check that invalid encodings fail
         let pkey = PublicKey::from_private_key(PrivateKey::new(&mut rng));
         let mut encoded = bincode::serialize(&pkey).unwrap();
-        encoded[47] = 127;
+        encoded[48] = 255;
         assert!(bincode::deserialize::<PublicKey>(&encoded).is_err());
 
         let encoded = bincode::serialize(&pkey).unwrap();
-        assert!(bincode::deserialize::<PublicKey>(&encoded[0..47]).is_err());
+        assert!(bincode::deserialize::<PublicKey>(&encoded[0..48]).is_err());
     }
 }
