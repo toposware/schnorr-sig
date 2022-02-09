@@ -16,10 +16,7 @@ use bitvec::{order::Lsb0, view::AsBits};
 use cheetah::group::ff::Field;
 use cheetah::BASEPOINT_TABLE;
 use cheetah::{AffinePoint, Fp, Fp6, Scalar};
-use hash::{
-    rescue_63_14_7::{digest::RescueDigest, hasher::RescueHash},
-    traits::{Digest, Hasher},
-};
+use hash::{rescue_63_14_7::hasher::RescueHash, traits::Digest};
 use rand_core::{CryptoRng, RngCore};
 use subtle::{Choice, CtOption};
 
@@ -103,15 +100,11 @@ impl Signature {
     }
 }
 
-pub(crate) fn hash_message(input: Fp6, message: &[Fp]) -> [u8; 32] {
-    let mut h = RescueHash::digest(&<[Fp; 6] as From<Fp6>>::from(input));
+pub(crate) fn hash_message(point_coordinate: Fp6, message: &[Fp]) -> [u8; 32] {
+    let mut data = <[Fp; 6] as From<Fp6>>::from(point_coordinate).to_vec();
+    data.extend_from_slice(message);
 
-    for message_chunk in message.chunks(7) {
-        let mut chunk = [Fp::zero(); 7];
-        chunk[0..message_chunk.len()].copy_from_slice(message_chunk);
-        let digest = RescueDigest::new(chunk);
-        h = RescueHash::merge(&[h, digest]);
-    }
+    let h = RescueHash::digest(&data);
 
     h.as_bytes()
 }
