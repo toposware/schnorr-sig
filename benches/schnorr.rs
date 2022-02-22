@@ -9,7 +9,6 @@
 #[macro_use]
 extern crate criterion;
 
-use cheetah::group::ff::Field;
 use cheetah::Fp;
 use criterion::Criterion;
 use rand_core::OsRng;

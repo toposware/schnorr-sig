@@ -13,10 +13,9 @@ use super::error::SignatureError;
 use super::{PrivateKey, PublicKey};
 
 use bitvec::{order::Lsb0, view::AsBits};
-use cheetah::group::ff::Field;
 use cheetah::BASEPOINT_TABLE;
 use cheetah::{AffinePoint, Fp, Fp6, Scalar};
-use hash::{rescue_63_14_7::hasher::RescueHash, traits::Digest};
+use hash::{rescue_64_14_7::hasher::RescueHash, traits::Digest};
 use rand_core::{CryptoRng, RngCore};
 use subtle::{Choice, CtOption};
 
@@ -61,7 +60,7 @@ impl Signature {
         let h_bits = h.as_bits::<Lsb0>();
 
         // Reconstruct a scalar from the binary sequence of h
-        let h_scalar = Scalar::from_bits(h_bits);
+        let h_scalar = Scalar::from_bits_vartime(h_bits);
 
         // Leverage faster scalar multiplication through
         // lookup tables and hardcoded base point table.

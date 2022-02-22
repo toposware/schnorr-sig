@@ -1,11 +1,10 @@
 # Schnorr-sig
 
 This crate provides an implementation of a modified version of the Schnorr signature protocol, for efficient verification in a STARK AIR program.
-The underlying curve is a custom curve, Cheetah, based on a sextic extension of the the Prime Field Fp with p = 2<sup>62</sup> + 2<sup>56</sup> + 2<sup>55</sup> + 1, and curve equation E(Fp): y<sup>2</sup> = x<sup>3</sup> + x + B, with
-B = `(1200866201009650596 * u + 1935817186716799185) * v^2 + (3999205700308519553 * u + 3518137720867787056) * v + 2508413708960025374 * u + 1526905369741321712`
+The underlying curve is a custom curve, Cheetah, based on a sextic extension of the the Prime Field Fp with p = 2<sup>64</sup> - 2<sup>32</sup> + 1, and curve equation E(Fp): y<sup>2</sup> = x<sup>3</sup> + x + B, with
+B = `u + 395`
 where
-- `u^2 - 2u - 2 = 0` is the polynomial defining the quadratic extension Fp2 over Fp,
-- `v^3 + v + 1 = 0` is the polynomial defining the cubic extension Fp6 over Fp2.
+- `u^6 - 7 = 0` is the polynomial defining the sextic extension Fp6 over Fp.
 and implemented [here](https://github.com/ToposWare/cheetah).
 
 * This implementation does not rely on the Rust standard library. The `std` feature is only used to indicate whether to use the `std` or the `alloc` crate for the underlying `hash` dependency.

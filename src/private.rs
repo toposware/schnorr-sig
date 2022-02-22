@@ -11,7 +11,6 @@
 
 use super::Signature;
 
-use cheetah::group::ff::Field;
 use cheetah::{Fp, Scalar};
 use rand_core::{CryptoRng, RngCore};
 use subtle::{Choice, ConditionallySelectable, CtOption};
