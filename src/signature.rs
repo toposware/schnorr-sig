@@ -16,7 +16,7 @@ use bitvec::{order::Lsb0, view::AsBits};
 use cheetah::BASEPOINT_TABLE;
 use cheetah::{AffinePoint, Fp, Fp6, Scalar};
 use hash::{
-    rescue_64_14_7::RescueHash,
+    rescue_64_8_4::RescueHash,
     traits::{Digest, Hasher},
 };
 use rand_core::{CryptoRng, RngCore};
