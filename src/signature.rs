@@ -15,7 +15,10 @@ use super::{PrivateKey, PublicKey};
 use bitvec::{order::Lsb0, view::AsBits};
 use cheetah::BASEPOINT_TABLE;
 use cheetah::{AffinePoint, Fp, Fp6, Scalar};
-use hash::{rescue_64_14_7::hasher::RescueHash, traits::Digest};
+use hash::{
+    rescue_64_8_4::RescueHash,
+    traits::{Digest, Hasher},
+};
 use rand_core::{CryptoRng, RngCore};
 use subtle::{Choice, CtOption};
 
@@ -103,7 +106,7 @@ pub(crate) fn hash_message(point_coordinate: Fp6, message: &[Fp]) -> [u8; 32] {
     let mut data = <[Fp; 6] as From<Fp6>>::from(point_coordinate).to_vec();
     data.extend_from_slice(message);
 
-    let h = RescueHash::digest(&data);
+    let h = RescueHash::hash_field(&data);
 
     h.as_bytes()
 }
