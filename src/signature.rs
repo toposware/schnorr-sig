@@ -26,8 +26,6 @@ use subtle::{Choice, CtOption};
 use serde::{Deserialize, Serialize};
 
 /// A Schnorr signature not attached to its message.
-// TODO: should we include the signed message as part
-// of the Struct, or have it in a wrapping struct?
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 #[cfg_attr(feature = "serialize", derive(Deserialize, Serialize))]
 pub struct Signature {
@@ -66,10 +64,10 @@ impl Signature {
         let h_scalar = Scalar::from_bits_vartime(h_bits);
 
         // Leverage faster scalar multiplication through
-        // lookup tables and hardcoded base point table.
+        // Straus-Shamir's trick with hardcoded base point table.
         let r = AffinePoint::from(
-            pkey.0.multiply_vartime(&h_scalar.to_bytes())
-                + BASEPOINT_TABLE.multiply_vartime(&self.e.to_bytes()),
+            pkey.0
+                .multiply_double_with_basepoint_vartime(&h_scalar.to_bytes(), &self.e.to_bytes()),
         );
 
         if r.get_x() == self.x {
