@@ -42,7 +42,7 @@ impl Signature {
         let r = Scalar::random(&mut rng);
         let r_point = AffinePoint::from(&BASEPOINT_TABLE * r);
 
-        let h = hash_message(r_point.get_x(), message);
+        let h = hash_message(&r_point.get_x(), message);
         let h_bits = h.as_bits::<Lsb0>();
 
         // Reconstruct a scalar from the binary sequence of h
@@ -57,7 +57,7 @@ impl Signature {
 
     /// Verifies a Schnorr signature
     pub fn verify(self, message: &[Fp], pkey: &PublicKey) -> Result<(), SignatureError> {
-        let h = hash_message(self.x, message);
+        let h = hash_message(&self.x, message);
         let h_bits = h.as_bits::<Lsb0>();
 
         // Reconstruct a scalar from the binary sequence of h
@@ -100,8 +100,8 @@ impl Signature {
     }
 }
 
-pub(crate) fn hash_message(point_coordinate: Fp6, message: &[Fp]) -> [u8; 32] {
-    let mut data = <[Fp; 6] as From<Fp6>>::from(point_coordinate).to_vec();
+pub(crate) fn hash_message(point_coordinate: &Fp6, message: &[Fp]) -> [u8; 32] {
+    let mut data = <[Fp; 6] as From<&Fp6>>::from(point_coordinate).to_vec();
     data.extend_from_slice(message);
 
     let h = RescueHash::hash_field(&data);
@@ -124,7 +124,7 @@ mod test {
         }
 
         let skey = PrivateKey::new(&mut rng);
-        let pkey = PublicKey::from_private_key(skey);
+        let pkey = PublicKey::from_private_key(&skey);
 
         let signature = Signature::sign(&message, &skey, &mut rng);
         assert!(signature.verify(&message, &pkey).is_ok());
@@ -140,7 +140,7 @@ mod test {
         }
 
         let skey = PrivateKey::new(&mut rng);
-        let pkey = PublicKey::from_private_key(skey);
+        let pkey = PublicKey::from_private_key(&skey);
 
         let signature = Signature::sign(&message, &skey, &mut rng);
 

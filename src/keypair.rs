@@ -34,7 +34,7 @@ impl KeyPair {
     /// Generates a new random key pair
     pub fn new(mut rng: impl CryptoRng + RngCore) -> Self {
         let private_key = PrivateKey::new(&mut rng);
-        let public_key = PublicKey::from_private_key(private_key);
+        let public_key = PublicKey::from_private_key(&private_key);
 
         KeyPair {
             private_key,
@@ -48,7 +48,7 @@ impl KeyPair {
     /// is unknown, it is preferable to use the `KeyPair:new`
     /// method instead.
     pub fn from_private_key(private_key: PrivateKey) -> Self {
-        let public_key = PublicKey::from_private_key(private_key);
+        let public_key = PublicKey::from_private_key(&private_key);
 
         KeyPair {
             private_key,
@@ -69,7 +69,7 @@ impl KeyPair {
     /// Constructs a key pair from an array of bytes
     pub fn from_bytes(bytes: &[u8; 32]) -> CtOption<Self> {
         PrivateKey::from_bytes(bytes).and_then(|private_key| {
-            let public_key = PublicKey::from_private_key(private_key);
+            let public_key = PublicKey::from_private_key(&private_key);
             CtOption::new(
                 KeyPair {
                     private_key,

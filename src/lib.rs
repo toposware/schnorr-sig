@@ -66,7 +66,7 @@
 //! let mut rng = OsRng;
 //! let message = [Fp::one(); 42];
 //! let skey = PrivateKey::new(&mut rng);
-//! let pkey = PublicKey::from_private_key(skey);
+//! let pkey = PublicKey::from_private_key(&skey);
 //!
 //! let signature = skey.sign(&message, &mut rng);
 //!
