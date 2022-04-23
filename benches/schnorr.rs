@@ -14,6 +14,7 @@ use criterion::Criterion;
 use rand_core::OsRng;
 
 extern crate schnorr_sig;
+use schnorr_sig::KeyPair;
 use schnorr_sig::PrivateKey;
 use schnorr_sig::PublicKey;
 use schnorr_sig::Signature;
@@ -21,7 +22,16 @@ use schnorr_sig::Signature;
 fn criterion_benchmark(c: &mut Criterion) {
     let mut rng = OsRng;
 
-    c.bench_function("sign", |bench| {
+    c.bench_function("Create keypair", |bench| {
+        bench.iter(|| KeyPair::new(&mut rng))
+    });
+
+    c.bench_function("Public key from private key", |bench| {
+        let skey = PrivateKey::new(&mut rng);
+        bench.iter(|| PublicKey::from_private_key(skey))
+    });
+
+    c.bench_function("Sign", |bench| {
         let mut message = [Fp::zero(); 26];
         for message_chunk in message.iter_mut() {
             *message_chunk = Fp::random(&mut rng);
@@ -32,7 +42,7 @@ fn criterion_benchmark(c: &mut Criterion) {
         bench.iter(|| Signature::sign(&message, &skey, &mut rng))
     });
 
-    c.bench_function("verify", |bench| {
+    c.bench_function("Verify", |bench| {
         let mut message = [Fp::zero(); 26];
         for message_chunk in message.iter_mut() {
             *message_chunk = Fp::random(&mut rng);
