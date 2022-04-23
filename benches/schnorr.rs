@@ -31,7 +31,7 @@ fn criterion_benchmark(c: &mut Criterion) {
         bench.iter(|| PublicKey::from_private_key(&skey))
     });
 
-    c.bench_function("Sign", |bench| {
+    c.bench_function("Sign with private key", |bench| {
         let mut message = [Fp::zero(); 26];
         for message_chunk in message.iter_mut() {
             *message_chunk = Fp::random(&mut rng);
@@ -39,7 +39,18 @@ fn criterion_benchmark(c: &mut Criterion) {
 
         let skey = PrivateKey::new(&mut rng);
 
-        bench.iter(|| Signature::sign(&message, &skey, &mut rng))
+        bench.iter(|| skey.sign(&message, &mut rng))
+    });
+
+    c.bench_function("Sign with keypair", |bench| {
+        let mut message = [Fp::zero(); 26];
+        for message_chunk in message.iter_mut() {
+            *message_chunk = Fp::random(&mut rng);
+        }
+
+        let keypair = KeyPair::new(&mut rng);
+
+        bench.iter(|| keypair.sign(&message, &mut rng))
     });
 
     c.bench_function("Verify", |bench| {

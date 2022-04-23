@@ -10,7 +10,7 @@
 //! Schnorr signing and verification.
 
 use super::error::SignatureError;
-use super::{PrivateKey, PublicKey};
+use super::{KeyPair, PrivateKey, PublicKey};
 
 use bitvec::{order::Lsb0, view::AsBits};
 use cheetah::BASEPOINT_TABLE;
@@ -37,12 +37,18 @@ pub struct Signature {
 }
 
 impl Signature {
-    /// Computes a Schnorr signature
+    /// Computes a Schnorr signature. This requires to compute the `PublicKey` from
+    /// the provided `PrivateKey` internally. For a faster signing, one should prefer
+    /// to use `Signature::sign_with_provided_pkey` or `Signature::sign_with_keypair`.
     pub fn sign(message: &[Fp], skey: &PrivateKey, mut rng: impl CryptoRng + RngCore) -> Self {
         let r = Scalar::random(&mut rng);
         let r_point = AffinePoint::from(&BASEPOINT_TABLE * r);
 
-        let h = hash_message(&r_point.get_x(), message);
+        let h = hash_message(
+            &r_point.get_x(),
+            &PublicKey::from_private_key(skey),
+            message,
+        );
         let h_bits = h.as_bits::<Lsb0>();
 
         // Reconstruct a scalar from the binary sequence of h
@@ -55,9 +61,58 @@ impl Signature {
         }
     }
 
+    /// Computes a Schnorr signature with a provided `PublicKey` for faster signing.
+    /// This method does not check that the provided `skey` and `pkey` are matching.
+    /// In particular, the resulting signature will be invalid if they don't match.
+    pub fn sign_with_provided_pkey(
+        message: &[Fp],
+        skey: &PrivateKey,
+        pkey: &PublicKey,
+        mut rng: impl CryptoRng + RngCore,
+    ) -> Self {
+        let r = Scalar::random(&mut rng);
+        let r_point = AffinePoint::from(&BASEPOINT_TABLE * r);
+
+        let h = hash_message(&r_point.get_x(), pkey, message);
+        let h_bits = h.as_bits::<Lsb0>();
+
+        // Reconstruct a scalar from the binary sequence of h
+        let h_scalar = Scalar::from_bits(h_bits);
+
+        let e = r - skey.0 * h_scalar;
+        Signature {
+            x: r_point.get_x(),
+            e,
+        }
+    }
+
+    /// Computes a Schnorr signature with a provided `PublicKey` for faster signing.
+    /// This method does not check that the provided `skey` and `pkey` are matching.
+    /// In particular, the resulting signature will be invalid if they don't match.
+    pub fn sign_with_keypair(
+        message: &[Fp],
+        keypair: &KeyPair,
+        mut rng: impl CryptoRng + RngCore,
+    ) -> Self {
+        let r = Scalar::random(&mut rng);
+        let r_point = AffinePoint::from(&BASEPOINT_TABLE * r);
+
+        let h = hash_message(&r_point.get_x(), &keypair.public_key, message);
+        let h_bits = h.as_bits::<Lsb0>();
+
+        // Reconstruct a scalar from the binary sequence of h
+        let h_scalar = Scalar::from_bits(h_bits);
+
+        let e = r - keypair.private_key.0 * h_scalar;
+        Signature {
+            x: r_point.get_x(),
+            e,
+        }
+    }
+
     /// Verifies a Schnorr signature
     pub fn verify(self, message: &[Fp], pkey: &PublicKey) -> Result<(), SignatureError> {
-        let h = hash_message(&self.x, message);
+        let h = hash_message(&self.x, pkey, message);
         let h_bits = h.as_bits::<Lsb0>();
 
         // Reconstruct a scalar from the binary sequence of h
@@ -100,8 +155,12 @@ impl Signature {
     }
 }
 
-pub(crate) fn hash_message(point_coordinate: &Fp6, message: &[Fp]) -> [u8; 32] {
+pub(crate) fn hash_message(point_coordinate: &Fp6, pkey: &PublicKey, message: &[Fp]) -> [u8; 32] {
     let mut data = <[Fp; 6] as From<&Fp6>>::from(point_coordinate).to_vec();
+    data.extend_from_slice(&<[Fp; 6] as From<Fp6>>::from(pkey.0.get_x()));
+    // Instead of serializing the public key and storing information of the y-coordinate into the
+    // empty bits of the x-coordinate, we hash the lowest coefficient of y along with the x array.
+    data.push(<[Fp; 6] as From<Fp6>>::from(pkey.0.get_y())[0]);
     data.extend_from_slice(message);
 
     let h = RescueHash::hash_field(&data);
@@ -123,11 +182,18 @@ mod test {
             *message_chunk = Fp::random(&mut rng);
         }
 
-        let skey = PrivateKey::new(&mut rng);
-        let pkey = PublicKey::from_private_key(&skey);
+        let keypair = KeyPair::new(&mut rng);
+        let skey = keypair.private_key;
+        let pkey = keypair.public_key;
 
         let signature = Signature::sign(&message, &skey, &mut rng);
         assert!(signature.verify(&message, &pkey).is_ok());
+
+        let signature = Signature::sign_with_provided_pkey(&message, &skey, &pkey, &mut rng);
+        assert!(pkey.verify_signature(&signature, &message).is_ok());
+
+        let signature = Signature::sign_with_keypair(&message, &keypair, &mut rng);
+        assert!(keypair.verify_signature(&signature, &message).is_ok());
     }
 
     #[test]

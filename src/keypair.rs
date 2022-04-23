@@ -82,7 +82,7 @@ impl KeyPair {
 
     /// Computes a Schnorr signature
     pub fn sign(&self, message: &[Fp], mut rng: impl CryptoRng + RngCore) -> Signature {
-        Signature::sign(message, &self.private_key, &mut rng)
+        Signature::sign_with_keypair(message, self, &mut rng)
     }
 
     /// Verifies a signature against a message and this key pair

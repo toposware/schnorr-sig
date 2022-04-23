@@ -56,7 +56,9 @@ impl PrivateKey {
         Scalar::from_bytes(bytes).and_then(|s| CtOption::new(PrivateKey(s), Choice::from(1u8)))
     }
 
-    /// Computes a Schnorr signature
+    /// Computes a Schnorr signature.
+    /// It is faster to sign with a `KeyPair` (containing the associated public key),
+    /// or to sign through the `Signature::sign_with_provided_pkey` method.
     pub fn sign(&self, message: &[Fp], mut rng: impl CryptoRng + RngCore) -> Signature {
         Signature::sign(message, self, &mut rng)
     }
