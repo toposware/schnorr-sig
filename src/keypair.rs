@@ -10,7 +10,7 @@
 //! combining a `PrivateKey` and an associated `PublicKey`.
 
 use super::error::SignatureError;
-use super::{PrivateKey, PublicKey, Signature};
+use super::{KeyedSignature, PrivateKey, PublicKey, Signature};
 
 use cheetah::Fp;
 use rand_core::{CryptoRng, RngCore};
@@ -83,6 +83,15 @@ impl KeyPair {
     /// Computes a Schnorr signature
     pub fn sign(&self, message: &[Fp], mut rng: impl CryptoRng + RngCore) -> Signature {
         Signature::sign_with_keypair(message, self, &mut rng)
+    }
+
+    /// Computes a Schnorr signature binded to its associated public key.
+    pub fn sign_and_bind_pkey(
+        &self,
+        message: &[Fp],
+        mut rng: impl CryptoRng + RngCore,
+    ) -> KeyedSignature {
+        KeyedSignature::sign_with_keypair(message, self, &mut rng)
     }
 
     /// Verifies a signature against a message and this key pair

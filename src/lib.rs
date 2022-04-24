@@ -123,7 +123,6 @@
 //! `verify_signature` method implemented for the
 //! `PublicKey` and `KeyPair` types:
 //!
-//!
 //! ```rust
 //! use cheetah::Fp;
 //! use schnorr_sig::KeyPair;
@@ -131,13 +130,34 @@
 //!
 //! let mut rng = OsRng;
 //! let message = [Fp::one(); 42];
-//! let key_pair = KeyPair::new(&mut rng);
-//! let pkey = key_pair.public_key;
+//! let keypair = KeyPair::new(&mut rng);
+//! let pkey = keypair.public_key;
 //!
-//! let signature = key_pair.sign(&message, &mut rng);
+//! let signature = keypair.sign(&message, &mut rng);
 //!
-//! assert!(key_pair.verify_signature(&signature, &message).is_ok());
+//! assert!(keypair.verify_signature(&signature, &message).is_ok());
 //! assert!(pkey.verify_signature(&signature, &message).is_ok());
+//! ```
+//!
+//! The `KeyedSignature` struct can also be used to attach the identity
+//! of the signer (its `PublicKey`) to a produced signature. The
+//! `KeyedSignature` struct shares the same signing methods than the
+//! `Signature` struct, and can be verified like this:
+//!
+//! ```rust
+//! use cheetah::Fp;
+//! use schnorr_sig::KeyPair;
+//! use schnorr_sig::KeyedSignature;
+//! use rand_core::OsRng;
+//!
+//! let mut rng = OsRng;
+//! let message = [Fp::one(); 42];
+//! let keypair = KeyPair::new(&mut rng);
+//!
+//! let keyed_signature = KeyedSignature::sign_with_keypair(&message, &keypair, &mut rng);
+//!
+//! assert!(keypair.verify_signature(&keyed_signature.signature, &message).is_ok());
+//! assert!(keyed_signature.verify(&message).is_ok());
 //! ```
 
 #![cfg_attr(docsrs, feature(doc_cfg))]
@@ -166,4 +186,4 @@ pub use public::PublicKey;
 
 pub use keypair::KeyPair;
 
-pub use signature::Signature;
+pub use signature::{KeyedSignature, Signature};

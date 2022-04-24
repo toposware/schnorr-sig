@@ -13,7 +13,7 @@ use super::error::SignatureError;
 use super::{PrivateKey, Signature};
 
 use cheetah::{CompressedPoint, Fp, ProjectivePoint, BASEPOINT_TABLE};
-use subtle::CtOption;
+use subtle::{Choice, ConditionallySelectable, CtOption};
 
 #[cfg(feature = "serialize")]
 use serde::{Deserialize, Serialize};
@@ -22,6 +22,12 @@ use serde::{Deserialize, Serialize};
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 #[cfg_attr(feature = "serialize", derive(Deserialize, Serialize))]
 pub struct PublicKey(pub(crate) ProjectivePoint);
+
+impl ConditionallySelectable for PublicKey {
+    fn conditional_select(a: &Self, b: &Self, choice: Choice) -> Self {
+        PublicKey(ProjectivePoint::conditional_select(&a.0, &b.0, choice))
+    }
+}
 
 impl PublicKey {
     /// Computes a public key from a provided private key
