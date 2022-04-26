@@ -10,7 +10,7 @@
 //! combining a `PrivateKey` and an associated `PublicKey`.
 
 use super::error::SignatureError;
-use super::{PrivateKey, PublicKey, Signature};
+use super::{KeyedSignature, PrivateKey, PublicKey, Signature};
 
 use cheetah::Fp;
 use rand_core::{CryptoRng, RngCore};
@@ -34,7 +34,7 @@ impl KeyPair {
     /// Generates a new random key pair
     pub fn new(mut rng: impl CryptoRng + RngCore) -> Self {
         let private_key = PrivateKey::new(&mut rng);
-        let public_key = PublicKey::from_private_key(private_key);
+        let public_key = PublicKey::from_private_key(&private_key);
 
         KeyPair {
             private_key,
@@ -48,7 +48,7 @@ impl KeyPair {
     /// is unknown, it is preferable to use the `KeyPair:new`
     /// method instead.
     pub fn from_private_key(private_key: PrivateKey) -> Self {
-        let public_key = PublicKey::from_private_key(private_key);
+        let public_key = PublicKey::from_private_key(&private_key);
 
         KeyPair {
             private_key,
@@ -69,7 +69,7 @@ impl KeyPair {
     /// Constructs a key pair from an array of bytes
     pub fn from_bytes(bytes: &[u8; 32]) -> CtOption<Self> {
         PrivateKey::from_bytes(bytes).and_then(|private_key| {
-            let public_key = PublicKey::from_private_key(private_key);
+            let public_key = PublicKey::from_private_key(&private_key);
             CtOption::new(
                 KeyPair {
                     private_key,
@@ -82,7 +82,16 @@ impl KeyPair {
 
     /// Computes a Schnorr signature
     pub fn sign(&self, message: &[Fp], mut rng: impl CryptoRng + RngCore) -> Signature {
-        Signature::sign(message, &self.private_key, &mut rng)
+        Signature::sign_with_keypair(message, self, &mut rng)
+    }
+
+    /// Computes a Schnorr signature binded to its associated public key.
+    pub fn sign_and_bind_pkey(
+        &self,
+        message: &[Fp],
+        mut rng: impl CryptoRng + RngCore,
+    ) -> KeyedSignature {
+        KeyedSignature::sign_with_keypair(message, self, &mut rng)
     }
 
     /// Verifies a signature against a message and this key pair

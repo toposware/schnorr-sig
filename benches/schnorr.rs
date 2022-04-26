@@ -14,37 +14,60 @@ use criterion::Criterion;
 use rand_core::OsRng;
 
 extern crate schnorr_sig;
-use schnorr_sig::PrivateKey;
-use schnorr_sig::PublicKey;
-use schnorr_sig::Signature;
+use schnorr_sig::{KeyPair, PrivateKey, PublicKey};
+
+static MESSAGE_LENGTHS: [usize; 3] = [1, 10, 20];
 
 fn criterion_benchmark(c: &mut Criterion) {
     let mut rng = OsRng;
+    let skey = PrivateKey::new(&mut rng);
+    let keypair = KeyPair::new(&mut rng);
 
-    c.bench_function("sign", |bench| {
-        let mut message = [Fp::zero(); 26];
-        for message_chunk in message.iter_mut() {
-            *message_chunk = Fp::random(&mut rng);
-        }
-
-        let skey = PrivateKey::new(&mut rng);
-
-        bench.iter(|| Signature::sign(&message, &skey, &mut rng))
+    c.bench_function("Create keypair", |bench| {
+        bench.iter(|| KeyPair::new(&mut rng))
     });
 
-    c.bench_function("verify", |bench| {
-        let mut message = [Fp::zero(); 26];
-        for message_chunk in message.iter_mut() {
-            *message_chunk = Fp::random(&mut rng);
-        }
-
+    c.bench_function("Public key from private key", |bench| {
         let skey = PrivateKey::new(&mut rng);
-        let pkey = PublicKey::from_private_key(skey);
-
-        let signature = Signature::sign(&message, &skey, &mut rng);
-
-        bench.iter(|| signature.verify(&message, &pkey))
+        bench.iter(|| PublicKey::from_private_key(&skey))
     });
+
+    let sign_str = "Sign with private key - ".to_string();
+    for &length in MESSAGE_LENGTHS.iter() {
+        let name = sign_str.clone() + &length.to_string() + " Fp elements";
+        c.bench_function(&name, |bench| {
+            let mut message = vec![Fp::zero(); length];
+            for message_chunk in message.iter_mut() {
+                *message_chunk = Fp::random(&mut rng);
+            }
+            bench.iter(|| skey.sign(&message, &mut rng))
+        });
+    }
+
+    let sign_str = "Sign with keypair - ".to_string();
+    for &length in MESSAGE_LENGTHS.iter() {
+        let name = sign_str.clone() + &length.to_string() + " Fp elements";
+        c.bench_function(&name, |bench| {
+            let mut message = vec![Fp::zero(); length];
+            for message_chunk in message.iter_mut() {
+                *message_chunk = Fp::random(&mut rng);
+            }
+            bench.iter(|| keypair.sign(&message, &mut rng))
+        });
+    }
+
+    let sign_str = "Verify - ".to_string();
+    for &length in MESSAGE_LENGTHS.iter() {
+        let name = sign_str.clone() + &length.to_string() + " Fp elements";
+        c.bench_function(&name, |bench| {
+            let mut message = vec![Fp::zero(); length];
+            for message_chunk in message.iter_mut() {
+                *message_chunk = Fp::random(&mut rng);
+            }
+            let signature = keypair.sign(&message, &mut rng);
+            bench.iter(|| signature.verify(&message, &keypair.public_key))
+        });
+    }
 }
 
 criterion_group!(

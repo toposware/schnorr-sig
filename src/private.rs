@@ -9,7 +9,7 @@
 //! This module provides a `PrivateKey` wrapping
 //! struct around a `Scalar` element.
 
-use super::Signature;
+use super::{KeyedSignature, Signature};
 
 use cheetah::{Fp, Scalar};
 use rand_core::{CryptoRng, RngCore};
@@ -56,9 +56,22 @@ impl PrivateKey {
         Scalar::from_bytes(bytes).and_then(|s| CtOption::new(PrivateKey(s), Choice::from(1u8)))
     }
 
-    /// Computes a Schnorr signature
+    /// Computes a Schnorr signature.
+    /// It is faster to sign with a `KeyPair` (containing the associated public key),
+    /// or to sign through the `Signature::sign_with_provided_pkey` method.
     pub fn sign(&self, message: &[Fp], mut rng: impl CryptoRng + RngCore) -> Signature {
         Signature::sign(message, self, &mut rng)
+    }
+
+    /// Computes a Schnorr signature binded to its associated public key.
+    /// It is faster to sign with a `KeyPair` (containing the associated public key),
+    /// or to sign through the `Signature::sign_with_provided_pkey` method.
+    pub fn sign_and_bind_pkey(
+        &self,
+        message: &[Fp],
+        mut rng: impl CryptoRng + RngCore,
+    ) -> KeyedSignature {
+        KeyedSignature::sign(message, self, &mut rng)
     }
 }
 
@@ -79,7 +92,7 @@ mod tests {
         }
 
         let skey = PrivateKey::new(&mut rng);
-        let pkey = PublicKey::from_private_key(skey);
+        let pkey = PublicKey::from_private_key(&skey);
 
         let signature = skey.sign(&message, &mut rng);
         assert!(signature.verify(&message, &pkey).is_ok());
