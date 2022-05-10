@@ -121,6 +121,10 @@ impl Signature {
 
     /// Verifies a Schnorr signature
     pub fn verify(self, message: &[Fp], pkey: &PublicKey) -> Result<(), SignatureError> {
+        if !bool::from(pkey.0.is_torsion_free()) {
+            return Err(SignatureError::InvalidPublicKey);
+        }
+
         let h = hash_message(&self.x, pkey, message);
         let h_bits = h.as_bits::<Lsb0>();
 

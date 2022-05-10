@@ -11,6 +11,8 @@ use core::fmt::{Display, Formatter, Result};
 /// Custom error type during signature operations
 #[derive(Debug, PartialEq)]
 pub enum SignatureError {
+    /// Invalid public key
+    InvalidPublicKey,
     /// Invalid signature
     InvalidSignature,
 }
@@ -18,6 +20,9 @@ pub enum SignatureError {
 impl Display for SignatureError {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         match self {
+            Self::InvalidPublicKey => {
+                write!(f, "The public key is not an element of the prime subgroup.",)
+            }
             Self::InvalidSignature => {
                 write!(f, "The signature is invalid or was incorrectly computed.",)
             }
