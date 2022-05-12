@@ -64,6 +64,21 @@ mod tests {
     use rand_core::OsRng;
 
     #[test]
+    fn test_conditional_selection() {
+        let a = PublicKey(ProjectivePoint::identity());
+        let b = PublicKey(ProjectivePoint::generator());
+
+        assert_eq!(
+            ConditionallySelectable::conditional_select(&a, &b, Choice::from(0u8)),
+            a
+        );
+        assert_eq!(
+            ConditionallySelectable::conditional_select(&a, &b, Choice::from(1u8)),
+            b
+        );
+    }
+
+    #[test]
     fn test_signature() {
         let mut rng = OsRng;
 

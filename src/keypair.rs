@@ -181,6 +181,9 @@ mod tests {
 
         let signature = key_pair.sign(&message, &mut rng);
         assert!(key_pair.verify_signature(&signature, &message).is_ok());
+
+        let keyed_signature = key_pair.sign_and_bind_pkey(&message, &mut rng);
+        assert!(keyed_signature.verify(&message).is_ok());
     }
 
     #[test]
@@ -201,7 +204,7 @@ mod tests {
             ]
         );
 
-        // Test random key pairs encoding
+        // Test random key pairs encodings
         let mut rng = OsRng;
 
         for _ in 0..100 {
@@ -210,6 +213,22 @@ mod tests {
 
             assert_eq!(key_pair, KeyPair::from_bytes(&bytes).unwrap());
         }
+
+        // Test invalid encodings
+        let bytes = [
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0,
+        ];
+        let recovered_key = KeyPair::from_bytes(&bytes);
+        assert!(bool::from(recovered_key.is_none()));
+
+        let bytes = [
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+            0xff, 0xff, 0xff, 0xff,
+        ];
+        let recovered_key = KeyPair::from_bytes(&bytes);
+        assert!(bool::from(recovered_key.is_none()));
     }
 
     #[test]
