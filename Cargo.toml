@@ -13,11 +13,13 @@ keywords = ["cryptography", "crypto", "signature"]
 
 [dependencies]
 bitvec = { version = "0.22", default-features = false }
+cheetah = { git = "https://github.com/ToposWare/cheetah.git", branch = "main", default-features = false }
 getrandom = { version = "0.2", default-features = false, features = ["js"] }
 hash = { git = "https://github.com/ToposWare/hash.git", branch = "main", default-features = false, features = ["f64"] }
+hmac = { version = "0.12", default-features = false }
 rand_core = { version = "0.6", default-features = false, features = ["getrandom"] }
 serde = { version = "1.0", default-features = false, optional = true, features = ["derive"] }
-cheetah = { git = "https://github.com/ToposWare/cheetah.git", branch = "main", default-features = false }
+sha2 = { version = "0.10", default-features = false }
 subtle = { version = "2.4", default-features = false }
 
 [dev-dependencies]

@@ -182,6 +182,9 @@ mod public;
 /// The key pair module.
 mod keypair;
 
+/// The key derivation module.
+mod derivation;
+
 /// The Schnorr signature module.
 mod signature;
 
@@ -189,5 +192,7 @@ pub use private::PrivateKey;
 pub use public::PublicKey;
 
 pub use keypair::KeyPair;
+
+pub use derivation::{ExtendedPrivateKey, ExtendedPublicKey};
 
 pub use signature::{KeyedSignature, Signature};

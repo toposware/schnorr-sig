@@ -19,7 +19,7 @@ use subtle::{Choice, ConditionallySelectable, CtOption};
 use serde::{Deserialize, Serialize};
 
 /// A private key
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Hash)]
 #[cfg_attr(feature = "serialize", derive(Deserialize, Serialize))]
 pub struct PublicKey(pub(crate) ProjectivePoint);
 
@@ -38,13 +38,13 @@ impl PublicKey {
     }
 
     /// Converts this public key to an array of bytes
-    pub fn to_bytes(&self) -> CompressedPoint {
-        self.0.to_compressed()
+    pub fn to_bytes(&self) -> [u8; 49] {
+        self.0.to_compressed().to_bytes()
     }
 
     /// Constructs a public key from an array of bytes
-    pub fn from_bytes(bytes: &CompressedPoint) -> CtOption<Self> {
-        ProjectivePoint::from_compressed(bytes).map(PublicKey)
+    pub fn from_bytes(bytes: &[u8; 49]) -> CtOption<Self> {
+        ProjectivePoint::from_compressed(&CompressedPoint::from_bytes(bytes)).map(PublicKey)
     }
 
     /// Verifies a signature against a message and this public key
@@ -97,9 +97,7 @@ mod tests {
     #[test]
     fn test_encoding() {
         assert_eq!(
-            PublicKey::from_private_key(&PrivateKey::from_scalar(Scalar::zero()))
-                .to_bytes()
-                .0,
+            PublicKey::from_private_key(&PrivateKey::from_scalar(Scalar::zero())).to_bytes(),
             [
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 128
@@ -115,6 +113,23 @@ mod tests {
 
             assert_eq!(key, PrivateKey::from_bytes(&bytes).unwrap());
         }
+
+        // Test invalid encodings
+        let bytes = [
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        ];
+        let recovered_key = PublicKey::from_bytes(&bytes);
+        assert!(bool::from(recovered_key.is_none()));
+
+        let bytes = [
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+        ];
+        let recovered_key = PublicKey::from_bytes(&bytes);
+        assert!(bool::from(recovered_key.is_none()));
     }
 
     #[test]
@@ -130,7 +145,7 @@ mod tests {
         assert_eq!(encoded.len(), 49);
 
         // Check that the encoding itself matches the usual one
-        assert_eq!(pkey, bincode::deserialize(&pkey.to_bytes().0).unwrap());
+        assert_eq!(pkey, bincode::deserialize(&pkey.to_bytes()).unwrap());
 
         // Check that invalid encodings fail
         let pkey = PublicKey::from_private_key(&PrivateKey::new(&mut rng));

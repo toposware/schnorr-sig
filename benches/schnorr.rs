@@ -11,10 +11,10 @@ extern crate criterion;
 
 use cheetah::Fp;
 use criterion::Criterion;
-use rand_core::OsRng;
+use rand_core::{OsRng, RngCore};
 
 extern crate schnorr_sig;
-use schnorr_sig::{KeyPair, PrivateKey, PublicKey};
+use schnorr_sig::{ExtendedPrivateKey, ExtendedPublicKey, KeyPair, PrivateKey, PublicKey};
 
 static MESSAGE_LENGTHS: [usize; 3] = [1, 10, 20];
 
@@ -22,6 +22,13 @@ fn criterion_benchmark(c: &mut Criterion) {
     let mut rng = OsRng;
     let skey = PrivateKey::new(&mut rng);
     let keypair = KeyPair::new(&mut rng);
+    let mut seed = [0u8; 32];
+    rng.fill_bytes(&mut seed);
+    let ext_skey = ExtendedPrivateKey::generate_master_key(&seed).unwrap();
+    let ext_pkey = ExtendedPublicKey::from_extended_private_key(&ext_skey);
+    let mut i = [0u8; 4];
+    rng.fill_bytes(&mut i);
+    i[3] &= 0b0111_1111;
 
     c.bench_function("Create keypair", |bench| {
         bench.iter(|| KeyPair::new(&mut rng))
@@ -68,6 +75,18 @@ fn criterion_benchmark(c: &mut Criterion) {
             bench.iter(|| signature.verify(&message, &keypair.public_key))
         });
     }
+
+    c.bench_function("Derive (priv. key -> priv. key)", |bench| {
+        bench.iter(|| ext_skey.derive_private(&i))
+    });
+
+    c.bench_function("Derive (priv. key -> pub. key)", |bench| {
+        bench.iter(|| ext_skey.derive_public(&i))
+    });
+
+    c.bench_function("Derive (pub. key -> pub. key)", |bench| {
+        bench.iter(|| ext_pkey.derive_normal_public(&i))
+    });
 }
 
 criterion_group!(

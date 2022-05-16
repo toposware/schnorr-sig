@@ -19,7 +19,7 @@ use subtle::{Choice, ConditionallySelectable, CtOption};
 use serde::{Deserialize, Serialize};
 
 /// A private key
-#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Hash)]
 #[cfg_attr(feature = "serialize", derive(Deserialize, Serialize))]
 pub struct PrivateKey(pub(crate) Scalar);
 

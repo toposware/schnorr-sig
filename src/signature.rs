@@ -14,7 +14,7 @@ use super::{KeyPair, PrivateKey, PublicKey};
 
 use bitvec::{order::Lsb0, view::AsBits};
 use cheetah::BASEPOINT_TABLE;
-use cheetah::{AffinePoint, CompressedPoint, Fp, Fp6, ProjectivePoint, Scalar};
+use cheetah::{AffinePoint, Fp, Fp6, ProjectivePoint, Scalar};
 use hash::{
     rescue_64_8_4::RescueHash,
     traits::{Digest, Hasher},
@@ -243,7 +243,7 @@ impl KeyedSignature {
     /// Converts this signature to an array of bytes
     pub fn to_bytes(&self) -> [u8; 129] {
         let mut output = [0u8; 129];
-        output[0..49].copy_from_slice(&self.public_key.to_bytes().0);
+        output[0..49].copy_from_slice(&self.public_key.to_bytes());
         output[49..129].copy_from_slice(&self.signature.to_bytes());
 
         output
@@ -253,7 +253,7 @@ impl KeyedSignature {
     pub fn from_bytes(bytes: &[u8; 129]) -> CtOption<Self> {
         let mut array = [0u8; 49];
         array.copy_from_slice(&bytes[0..49]);
-        let public_key = PublicKey::from_bytes(&CompressedPoint(array));
+        let public_key = PublicKey::from_bytes(&array);
 
         let mut array = [0u8; 80];
         array.copy_from_slice(&bytes[49..129]);
