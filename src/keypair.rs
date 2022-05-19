@@ -22,6 +22,31 @@ use serde::de::Visitor;
 #[cfg(feature = "serialize")]
 use serde::{self, Deserialize, Deserializer, Serialize, Serializer};
 
+impl From<&PrivateKey> for KeyPair {
+    /// Creates a key pair from a private key reference.
+    ///
+    /// If the source or generation method of the private key
+    /// is unknown, it is preferable to use the `KeyPair:new`
+    /// method instead.
+    fn from(private_key: &PrivateKey) -> KeyPair {
+        KeyPair {
+            private_key: *private_key,
+            public_key: private_key.into(),
+        }
+    }
+}
+
+impl From<PrivateKey> for KeyPair {
+    /// Creates a key pair from a private key.
+    ///
+    /// If the source or generation method of the private key
+    /// is unknown, it is preferable to use the `KeyPair:new`
+    /// method instead.
+    fn from(private_key: PrivateKey) -> KeyPair {
+        (&private_key).into()
+    }
+}
+
 /// A KeyPair
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct KeyPair {
@@ -35,21 +60,7 @@ impl KeyPair {
     /// Generates a new random key pair
     pub fn new(mut rng: impl CryptoRng + RngCore) -> Self {
         let private_key = PrivateKey::new(&mut rng);
-        let public_key = PublicKey::from_private_key(&private_key);
-
-        KeyPair {
-            private_key,
-            public_key,
-        }
-    }
-
-    /// Generates a new key pair from a provided private key.
-    ///
-    /// If the source or generation method of the private key
-    /// is unknown, it is preferable to use the `KeyPair:new`
-    /// method instead.
-    pub fn from_private_key(private_key: PrivateKey) -> Self {
-        let public_key = PublicKey::from_private_key(&private_key);
+        let public_key = PublicKey::from(&private_key);
 
         KeyPair {
             private_key,
@@ -70,7 +81,7 @@ impl KeyPair {
     /// Constructs a key pair from an array of bytes
     pub fn from_bytes(bytes: &[u8; KEY_PAIR_LENGTH]) -> CtOption<Self> {
         PrivateKey::from_bytes(bytes).and_then(|private_key| {
-            let public_key = PublicKey::from_private_key(&private_key);
+            let public_key = PublicKey::from(&private_key);
             CtOption::new(
                 KeyPair {
                     private_key,
@@ -178,7 +189,7 @@ mod tests {
         }
 
         let skey = PrivateKey::new(&mut rng);
-        let key_pair = KeyPair::from_private_key(skey);
+        let key_pair = KeyPair::from(skey);
 
         let signature = key_pair.sign(&message, &mut rng);
         assert!(key_pair.verify_signature(&signature, &message).is_ok());
@@ -190,7 +201,7 @@ mod tests {
     #[test]
     fn test_encoding() {
         assert_eq!(
-            KeyPair::from_private_key(PrivateKey::from_scalar(Scalar::zero())).to_bytes(),
+            KeyPair::from(PrivateKey::from_scalar(Scalar::zero())).to_bytes(),
             [
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0
@@ -198,7 +209,7 @@ mod tests {
         );
 
         assert_eq!(
-            KeyPair::from_private_key(PrivateKey::from_scalar(Scalar::one())).to_bytes(),
+            KeyPair::from(PrivateKey::from_scalar(Scalar::one())).to_bytes(),
             [
                 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0
@@ -236,7 +247,7 @@ mod tests {
     #[cfg(feature = "serialize")]
     fn test_serde() {
         let mut rng = OsRng;
-        let key_pair = KeyPair::from_private_key(PrivateKey::new(&mut rng));
+        let key_pair = KeyPair::from(PrivateKey::new(&mut rng));
         let encoded = bincode::serialize(&key_pair).unwrap();
         let parsed: KeyPair = bincode::deserialize(&encoded).unwrap();
         assert_eq!(parsed, key_pair);
@@ -251,7 +262,7 @@ mod tests {
         );
 
         // Check that invalid encodings fail
-        let key_pair = KeyPair::from_private_key(PrivateKey::new(&mut rng));
+        let key_pair = KeyPair::from(PrivateKey::new(&mut rng));
         let mut encoded = bincode::serialize(&key_pair).unwrap();
         encoded[31] = 127;
         assert!(bincode::deserialize::<KeyPair>(&encoded).is_err());

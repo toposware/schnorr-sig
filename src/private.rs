@@ -10,7 +10,7 @@
 //! struct around a `Scalar` element.
 
 use super::PRIVATE_KEY_LENGTH;
-use super::{KeyedSignature, Signature};
+use super::{KeyPair, KeyedSignature, Signature};
 
 use cheetah::{Fp, Scalar};
 use rand_core::{CryptoRng, RngCore};
@@ -23,6 +23,20 @@ use serde::{Deserialize, Serialize};
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Hash)]
 #[cfg_attr(feature = "serialize", derive(Deserialize, Serialize))]
 pub struct PrivateKey(pub(crate) Scalar);
+
+impl From<&KeyPair> for PrivateKey {
+    /// Extracts a private key from a key pair reference.
+    fn from(key_pair: &KeyPair) -> PrivateKey {
+        key_pair.private_key
+    }
+}
+
+impl From<KeyPair> for PrivateKey {
+    /// Extracts a private key from a key pair.
+    fn from(key_pair: KeyPair) -> PrivateKey {
+        key_pair.private_key
+    }
+}
 
 impl ConditionallySelectable for PrivateKey {
     fn conditional_select(a: &Self, b: &Self, choice: Choice) -> Self {
@@ -112,7 +126,7 @@ mod tests {
         }
 
         let skey = PrivateKey::new(&mut rng);
-        let pkey = PublicKey::from_private_key(&skey);
+        let pkey = PublicKey::from(&skey);
 
         let signature = skey.sign(&message, &mut rng);
         assert!(signature.verify(&message, &pkey).is_ok());

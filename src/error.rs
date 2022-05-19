@@ -41,7 +41,7 @@ mod tests {
         let mut rng = OsRng;
 
         let skey = PrivateKey::new(&mut rng);
-        let pkey = PublicKey::from_private_key(&skey);
+        let pkey = PublicKey::from(&skey);
         let signature = skey.sign(&[Fp::zero()], &mut rng);
 
         let wrong_pkey = PublicKey(AffinePoint::from_raw_coordinates([

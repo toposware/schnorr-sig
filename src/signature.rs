@@ -53,11 +53,7 @@ impl Signature {
         let r = Scalar::random(&mut rng);
         let r_point = AffinePoint::from(&BASEPOINT_TABLE * r);
 
-        let h = hash_message(
-            &r_point.get_x(),
-            &PublicKey::from_private_key(skey),
-            message,
-        );
+        let h = hash_message(&r_point.get_x(), &PublicKey::from(skey), message);
         let h_bits = h.as_bits::<Lsb0>();
 
         // Reconstruct a scalar from the binary sequence of h
@@ -183,7 +179,7 @@ impl KeyedSignature {
     /// the provided `PrivateKey` internally. For a faster signing, one should prefer
     /// to use `Signature::sign_with_provided_pkey` or `Signature::sign_with_keypair`.
     pub fn sign(message: &[Fp], skey: &PrivateKey, mut rng: impl CryptoRng + RngCore) -> Self {
-        let public_key = PublicKey::from_private_key(skey);
+        let public_key = PublicKey::from(skey);
         let r = Scalar::random(&mut rng);
         let r_point = AffinePoint::from(&BASEPOINT_TABLE * r);
 
@@ -357,7 +353,7 @@ mod test {
         }
 
         let skey = PrivateKey::new(&mut rng);
-        let pkey = PublicKey::from_private_key(&skey);
+        let pkey = PublicKey::from(&skey);
 
         let signature = Signature::sign(&message, &skey, &mut rng);
 
@@ -531,7 +527,7 @@ mod test {
         }
 
         let keyed_signature = KeyedSignature {
-            public_key: PublicKey::from_private_key(&skey),
+            public_key: PublicKey::from(&skey),
             signature,
         };
         {

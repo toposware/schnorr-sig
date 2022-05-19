@@ -128,7 +128,7 @@ impl ExtendedPrivateKey {
     /// The index, written in little-endian, must represent an integer strictly
     /// smaller than 2^31.
     fn derive_normal_private(&self, i: &[u8; 4]) -> CtOption<Self> {
-        let public_key_bytes = PublicKey::from_private_key(&self.key).to_bytes();
+        let public_key_bytes = PublicKey::from(&self.key).to_bytes();
 
         let mut mac = HmacSha512::new_from_slice(&self.chaincode.0)
             .expect("HMAC should take a 32-bytes long chaincode.");
@@ -166,7 +166,7 @@ impl ExtendedPrivateKey {
 
         CtOption::new(
             ExtendedPublicKey {
-                key: PublicKey::from_private_key(&extended_private_key.key),
+                key: PublicKey::from(&extended_private_key.key),
                 chaincode: extended_private_key.chaincode,
             },
             derived_private_key.is_some(),
@@ -223,7 +223,7 @@ impl ExtendedPublicKey {
     /// Computes the extended public key from a provided extended private key
     pub fn from_extended_private_key(extended_private_key: &ExtendedPrivateKey) -> Self {
         ExtendedPublicKey {
-            key: PublicKey::from_private_key(&extended_private_key.key),
+            key: PublicKey::from(&extended_private_key.key),
             chaincode: extended_private_key.chaincode,
         }
     }
@@ -468,7 +468,7 @@ mod tests {
     fn test_extended_public_key_encoding() {
         assert_eq!(
             ExtendedPublicKey {
-                key: PublicKey::from_private_key(&PrivateKey::from_scalar(Scalar::zero())),
+                key: PublicKey::from(&PrivateKey::from_scalar(Scalar::zero())),
                 chaincode: ChainCode([1u8; CHAIN_CODE_LENGTH])
             }
             .to_bytes(),
@@ -486,7 +486,7 @@ mod tests {
         for _ in 0..100 {
             rng.fill_bytes(&mut chaincode);
             let key = ExtendedPublicKey {
-                key: PublicKey::from_private_key(&PrivateKey::new(&mut rng)),
+                key: PublicKey::from(&PrivateKey::new(&mut rng)),
                 chaincode: ChainCode(chaincode),
             };
             let bytes = key.to_bytes();

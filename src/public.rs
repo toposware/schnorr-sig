@@ -24,6 +24,21 @@ use serde::{Deserialize, Serialize};
 #[cfg_attr(feature = "serialize", derive(Deserialize, Serialize))]
 pub struct PublicKey(pub(crate) AffinePoint);
 
+impl From<&PrivateKey> for PublicKey {
+    /// Creates a public key from a private key reference.
+    fn from(private_key: &PrivateKey) -> PublicKey {
+        let public_key = &BASEPOINT_TABLE * private_key.0;
+        PublicKey(public_key.into())
+    }
+}
+
+impl From<PrivateKey> for PublicKey {
+    /// Creates a public key from a private key.
+    fn from(private_key: PrivateKey) -> PublicKey {
+        (&private_key).into()
+    }
+}
+
 impl ConditionallySelectable for PublicKey {
     fn conditional_select(a: &Self, b: &Self, choice: Choice) -> Self {
         PublicKey(AffinePoint::conditional_select(&a.0, &b.0, choice))
@@ -31,13 +46,6 @@ impl ConditionallySelectable for PublicKey {
 }
 
 impl PublicKey {
-    /// Computes a public key from a provided private key
-    pub fn from_private_key(sk: &PrivateKey) -> Self {
-        let pkey = &BASEPOINT_TABLE * sk.0;
-
-        PublicKey(pkey.into())
-    }
-
     /// Converts this public key to an array of bytes
     pub fn to_bytes(&self) -> [u8; PUBLIC_KEY_LENGTH] {
         self.0.to_compressed().to_bytes()
@@ -89,7 +97,7 @@ mod tests {
         }
 
         let skey = PrivateKey::new(&mut rng);
-        let pkey = PublicKey::from_private_key(&skey);
+        let pkey = PublicKey::from(&skey);
 
         let signature = Signature::sign(&message, &skey, &mut rng);
         assert!(pkey.verify_signature(&signature, &message).is_ok());
@@ -98,7 +106,7 @@ mod tests {
     #[test]
     fn test_encoding() {
         assert_eq!(
-            PublicKey::from_private_key(&PrivateKey::from_scalar(Scalar::zero())).to_bytes(),
+            PublicKey::from(&PrivateKey::from_scalar(Scalar::zero())).to_bytes(),
             [
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 128
@@ -137,7 +145,7 @@ mod tests {
     #[cfg(feature = "serialize")]
     fn test_serde() {
         let mut rng = OsRng;
-        let pkey = PublicKey::from_private_key(&PrivateKey::new(&mut rng));
+        let pkey = PublicKey::from(&PrivateKey::new(&mut rng));
         let encoded = bincode::serialize(&pkey).unwrap();
         let parsed: PublicKey = bincode::deserialize(&encoded).unwrap();
         assert_eq!(parsed, pkey);
@@ -149,7 +157,7 @@ mod tests {
         assert_eq!(pkey, bincode::deserialize(&pkey.to_bytes()).unwrap());
 
         // Check that invalid encodings fail
-        let pkey = PublicKey::from_private_key(&PrivateKey::new(&mut rng));
+        let pkey = PublicKey::from(&PrivateKey::new(&mut rng));
         let mut encoded = bincode::serialize(&pkey).unwrap();
         encoded[48] = 255;
         assert!(bincode::deserialize::<PublicKey>(&encoded).is_err());
