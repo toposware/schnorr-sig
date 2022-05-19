@@ -193,6 +193,6 @@ pub use public::PublicKey;
 
 pub use keypair::KeyPair;
 
-pub use derivation::{ExtendedPrivateKey, ExtendedPublicKey};
+pub use derivation::{ChainCode, ExtendedPrivateKey, ExtendedPublicKey, CHAIN_CODE_LENGTH};
 
 pub use signature::{KeyedSignature, Signature};

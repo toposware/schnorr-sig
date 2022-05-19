@@ -22,11 +22,14 @@ use serde::{Deserialize, Serialize};
 
 type HmacSha512 = Hmac<Sha512>;
 
+/// Chain code length, could be only 16 but set to 32 for safety.
+pub const CHAIN_CODE_LENGTH: usize = 32;
+
 /// BIP32 like chain codes, providing large entropy when deriving keys.
 /// Chain codes are 32 bytes long.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serialize", derive(Deserialize, Serialize))]
-pub struct ChainCode([u8; 32]);
+pub struct ChainCode([u8; CHAIN_CODE_LENGTH]);
 
 impl ConditionallySelectable for ChainCode {
     fn conditional_select(a: &Self, b: &Self, choice: Choice) -> Self {
