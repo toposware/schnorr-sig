@@ -10,6 +10,10 @@
 //! key derivation" (HDKD) for Schnorr signatures on the Cheetah curve.
 
 use super::{PrivateKey, PublicKey};
+use super::{
+    CHAIN_CODE_LENGTH, EXTENDED_PRIVATE_KEY_LENGTH, EXTENDED_PUBLIC_KEY_LENGTH, PRIVATE_KEY_LENGTH,
+    PRIVATE_KEY_SEED_LENGTH, PUBLIC_KEY_LENGTH,
+};
 
 use cheetah::Scalar;
 use cheetah::BASEPOINT_TABLE;
@@ -22,18 +26,14 @@ use serde::{Deserialize, Serialize};
 
 type HmacSha512 = Hmac<Sha512>;
 
-/// Chain code length, could be only 16 but set to 32 for safety.
-pub const CHAIN_CODE_LENGTH: usize = 32;
-
 /// BIP32 like chain codes, providing large entropy when deriving keys.
-/// Chain codes are 32 bytes long.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serialize", derive(Deserialize, Serialize))]
 pub struct ChainCode([u8; CHAIN_CODE_LENGTH]);
 
 impl ConditionallySelectable for ChainCode {
     fn conditional_select(a: &Self, b: &Self, choice: Choice) -> Self {
-        let mut bytes = [0u8; 32];
+        let mut bytes = [0u8; CHAIN_CODE_LENGTH];
         for (i, byte) in bytes.iter_mut().enumerate() {
             *byte = u8::conditional_select(&a.0[i], &b.0[i], choice);
         }
@@ -63,7 +63,7 @@ impl ConditionallySelectable for ExtendedPrivateKey {
 
 impl ExtendedPrivateKey {
     /// Generates a master extended spending key from a provided seed.
-    pub fn generate_master_key(seed: &[u8; 32]) -> CtOption<Self> {
+    pub fn generate_master_key(seed: &[u8; PRIVATE_KEY_SEED_LENGTH]) -> CtOption<Self> {
         let mut mac = HmacSha512::new_from_slice("Cheetah - Master extended key seed".as_bytes())
             .expect("This instantiation should not fail.");
         mac.update(seed);
@@ -71,11 +71,11 @@ impl ExtendedPrivateKey {
         let result = mac.finalize();
         let bytes = result.into_bytes();
 
-        let mut array = [0u8; 32];
-        array.copy_from_slice(&bytes[..32]);
+        let mut array = [0u8; PRIVATE_KEY_LENGTH];
+        array.copy_from_slice(&bytes[..PRIVATE_KEY_LENGTH]);
         let key = PrivateKey(Scalar::from_bytes_non_canonical(&array));
 
-        array.copy_from_slice(&bytes[32..]);
+        array.copy_from_slice(&bytes[PRIVATE_KEY_LENGTH..]);
         let chaincode = ChainCode(array);
 
         CtOption::new(ExtendedPrivateKey { key, chaincode }, !(key.0.is_zero()))
@@ -98,8 +98,8 @@ impl ExtendedPrivateKey {
     /// The index, written in little-endian, must represent an integer greater
     /// than 2^31.
     fn derive_hardened_private(&self, i: &[u8; 4]) -> CtOption<Self> {
-        let mut key_array = [0u8; 49];
-        key_array[17..].copy_from_slice(&self.key.to_bytes());
+        let mut key_array = [0u8; PUBLIC_KEY_LENGTH];
+        key_array[PUBLIC_KEY_LENGTH - PRIVATE_KEY_LENGTH..].copy_from_slice(&self.key.to_bytes());
         let mut mac = HmacSha512::new_from_slice(&self.chaincode.0)
             .expect("HMAC should take a 32-bytes long chaincode.");
         mac.update(&key_array);
@@ -108,11 +108,11 @@ impl ExtendedPrivateKey {
         let result = mac.finalize();
         let bytes = result.into_bytes();
 
-        let mut array = [0u8; 32];
-        array.copy_from_slice(&bytes[..32]);
+        let mut array = [0u8; PRIVATE_KEY_LENGTH];
+        array.copy_from_slice(&bytes[..PRIVATE_KEY_LENGTH]);
         let key = PrivateKey(Scalar::from_bytes_non_canonical(&array) + self.key.0);
 
-        array.copy_from_slice(&bytes[32..]);
+        array.copy_from_slice(&bytes[PRIVATE_KEY_LENGTH..]);
         let chaincode = ChainCode(array);
 
         CtOption::new(
@@ -138,11 +138,11 @@ impl ExtendedPrivateKey {
         let result = mac.finalize();
         let bytes = result.into_bytes();
 
-        let mut array = [0u8; 32];
-        array.copy_from_slice(&bytes[..32]);
+        let mut array = [0u8; PRIVATE_KEY_LENGTH];
+        array.copy_from_slice(&bytes[..PRIVATE_KEY_LENGTH]);
         let key = PrivateKey(Scalar::from_bytes_non_canonical(&array) + self.key.0);
 
-        array.copy_from_slice(&bytes[32..]);
+        array.copy_from_slice(&bytes[PRIVATE_KEY_LENGTH..]);
         let chaincode = ChainCode(array);
 
         CtOption::new(
@@ -161,7 +161,7 @@ impl ExtendedPrivateKey {
         let derived_private_key = self.derive_private(i);
         let extended_private_key = derived_private_key.unwrap_or(ExtendedPrivateKey {
             key: PrivateKey(Scalar::zero()),
-            chaincode: ChainCode([0u8; 32]),
+            chaincode: ChainCode([0u8; CHAIN_CODE_LENGTH]),
         });
 
         CtOption::new(
@@ -174,20 +174,20 @@ impl ExtendedPrivateKey {
     }
 
     /// Converts this extended private key to an array of bytes
-    pub fn to_bytes(&self) -> [u8; 64] {
-        let mut bytes = [0u8; 64];
-        bytes[0..32].copy_from_slice(&self.key.to_bytes());
-        bytes[32..64].copy_from_slice(&self.chaincode.0);
+    pub fn to_bytes(&self) -> [u8; EXTENDED_PRIVATE_KEY_LENGTH] {
+        let mut bytes = [0u8; EXTENDED_PRIVATE_KEY_LENGTH];
+        bytes[0..PRIVATE_KEY_LENGTH].copy_from_slice(&self.key.to_bytes());
+        bytes[PRIVATE_KEY_LENGTH..].copy_from_slice(&self.chaincode.0);
 
         bytes
     }
 
     /// Constructs an extended private key from an array of bytes
-    pub fn from_bytes(bytes: &[u8; 64]) -> CtOption<Self> {
-        let mut array = [0u8; 32];
-        array.copy_from_slice(&bytes[0..32]);
+    pub fn from_bytes(bytes: &[u8; EXTENDED_PRIVATE_KEY_LENGTH]) -> CtOption<Self> {
+        let mut array = [0u8; PRIVATE_KEY_LENGTH];
+        array.copy_from_slice(&bytes[0..PRIVATE_KEY_LENGTH]);
         PrivateKey::from_bytes(&array).and_then(|key| {
-            array.copy_from_slice(&bytes[32..64]);
+            array.copy_from_slice(&bytes[PRIVATE_KEY_LENGTH..]);
 
             CtOption::new(
                 ExtendedPrivateKey {
@@ -228,7 +228,7 @@ impl ExtendedPublicKey {
         }
     }
 
-    /// Derives a non-hardened public child from the current extended private key
+    /// Derives a non-hardened public child from the current extended public key
     /// with the provided index `i`.
     /// The index, written in little-endian, must represent an integer strictly
     /// smaller than 2^31.
@@ -243,12 +243,12 @@ impl ExtendedPublicKey {
         let result = mac.finalize();
         let bytes = result.into_bytes();
 
-        let mut array = [0u8; 32];
-        array.copy_from_slice(&bytes[..32]);
+        let mut array = [0u8; PRIVATE_KEY_LENGTH];
+        array.copy_from_slice(&bytes[..PRIVATE_KEY_LENGTH]);
         let point = &BASEPOINT_TABLE * Scalar::from_bytes_non_canonical(&array);
         let key = PublicKey((point + self.key.0).into());
 
-        array.copy_from_slice(&bytes[32..]);
+        array.copy_from_slice(&bytes[PRIVATE_KEY_LENGTH..]);
         let chaincode = ChainCode(array);
 
         CtOption::new(
@@ -260,21 +260,21 @@ impl ExtendedPublicKey {
     }
 
     /// Converts this extended public key to an array of bytes
-    pub fn to_bytes(&self) -> [u8; 81] {
-        let mut bytes = [0u8; 81];
-        bytes[0..49].copy_from_slice(&self.key.to_bytes());
-        bytes[49..81].copy_from_slice(&self.chaincode.0);
+    pub fn to_bytes(&self) -> [u8; EXTENDED_PUBLIC_KEY_LENGTH] {
+        let mut bytes = [0u8; EXTENDED_PUBLIC_KEY_LENGTH];
+        bytes[0..PUBLIC_KEY_LENGTH].copy_from_slice(&self.key.to_bytes());
+        bytes[PUBLIC_KEY_LENGTH..].copy_from_slice(&self.chaincode.0);
 
         bytes
     }
 
     /// Constructs an extended public key from an array of bytes
-    pub fn from_bytes(bytes: &[u8; 81]) -> CtOption<Self> {
-        let mut key_array = [0u8; 49];
-        key_array.copy_from_slice(&bytes[0..49]);
+    pub fn from_bytes(bytes: &[u8; EXTENDED_PUBLIC_KEY_LENGTH]) -> CtOption<Self> {
+        let mut key_array = [0u8; PUBLIC_KEY_LENGTH];
+        key_array.copy_from_slice(&bytes[0..PUBLIC_KEY_LENGTH]);
         PublicKey::from_bytes(&key_array).and_then(|key| {
-            let mut array = [0u8; 32];
-            array.copy_from_slice(&bytes[49..81]);
+            let mut array = [0u8; CHAIN_CODE_LENGTH];
+            array.copy_from_slice(&bytes[PUBLIC_KEY_LENGTH..]);
 
             CtOption::new(
                 ExtendedPublicKey {
@@ -297,9 +297,9 @@ mod tests {
     #[test]
     fn test_extended_private_key_conditional_selection() {
         let a_skey = PrivateKey(Scalar::one());
-        let a_chaincode = ChainCode([1u8; 32]);
+        let a_chaincode = ChainCode([1u8; CHAIN_CODE_LENGTH]);
         let b_skey = PrivateKey(Scalar::from(42u8));
-        let b_chaincode = ChainCode([42u8; 32]);
+        let b_chaincode = ChainCode([42u8; CHAIN_CODE_LENGTH]);
 
         let a_ext_skey = ExtendedPrivateKey {
             key: a_skey,
@@ -332,9 +332,9 @@ mod tests {
     #[test]
     fn test_extended_public_key_conditional_selection() {
         let a_skey = PrivateKey(Scalar::one());
-        let a_chaincode = ChainCode([1u8; 32]);
+        let a_chaincode = ChainCode([1u8; CHAIN_CODE_LENGTH]);
         let b_skey = PrivateKey(Scalar::from(42u8));
-        let b_chaincode = ChainCode([42u8; 32]);
+        let b_chaincode = ChainCode([42u8; CHAIN_CODE_LENGTH]);
 
         let a_ext_skey = ExtendedPrivateKey {
             key: a_skey,
@@ -370,7 +370,7 @@ mod tests {
     #[test]
     fn test_derive() {
         let mut rng = OsRng;
-        let mut seed = [0u8; 32];
+        let mut seed = [0u8; PRIVATE_KEY_SEED_LENGTH];
         rng.fill_bytes(&mut seed);
 
         let skey = ExtendedPrivateKey::generate_master_key(&seed).unwrap();
@@ -420,7 +420,7 @@ mod tests {
         assert_eq!(
             ExtendedPrivateKey {
                 key: PrivateKey::from_scalar(Scalar::one()),
-                chaincode: ChainCode([1u8; 32])
+                chaincode: ChainCode([1u8; CHAIN_CODE_LENGTH])
             }
             .to_bytes(),
             [
@@ -433,7 +433,7 @@ mod tests {
         // Test random keys encodings
         let mut rng = OsRng;
 
-        let mut chaincode = [0u8; 32];
+        let mut chaincode = [0u8; CHAIN_CODE_LENGTH];
         for _ in 0..100 {
             rng.fill_bytes(&mut chaincode);
             let key = ExtendedPrivateKey {
@@ -469,7 +469,7 @@ mod tests {
         assert_eq!(
             ExtendedPublicKey {
                 key: PublicKey::from_private_key(&PrivateKey::from_scalar(Scalar::zero())),
-                chaincode: ChainCode([1u8; 32])
+                chaincode: ChainCode([1u8; CHAIN_CODE_LENGTH])
             }
             .to_bytes(),
             [
@@ -482,7 +482,7 @@ mod tests {
         // Test random keys encodings
         let mut rng = OsRng;
 
-        let mut chaincode = [0u8; 32];
+        let mut chaincode = [0u8; CHAIN_CODE_LENGTH];
         for _ in 0..100 {
             rng.fill_bytes(&mut chaincode);
             let key = ExtendedPublicKey {
@@ -519,7 +519,7 @@ mod tests {
     fn test_extended_private_key_serde() {
         let mut rng = OsRng;
         let skey = PrivateKey::new(&mut rng);
-        let chaincode = ChainCode([1u8; 32]);
+        let chaincode = ChainCode([1u8; CHAIN_CODE_LENGTH]);
 
         let ext_skey = ExtendedPrivateKey {
             key: skey,
@@ -530,8 +530,8 @@ mod tests {
         let parsed: ExtendedPrivateKey = bincode::deserialize(&encoded).unwrap();
         assert_eq!(parsed, ext_skey);
 
-        // Check that the encoding is 64 bytes exactly
-        assert_eq!(encoded.len(), 64);
+        // Check that the encoding is EXTENDED_PRIVATE_KEY_LENGTH (64) bytes exactly
+        assert_eq!(encoded.len(), EXTENDED_PRIVATE_KEY_LENGTH);
 
         // Check that the encoding itself matches the usual one
         assert_eq!(
@@ -552,7 +552,7 @@ mod tests {
     fn test_extended_public_key_serde() {
         let mut rng = OsRng;
         let skey = PrivateKey::new(&mut rng);
-        let chaincode = ChainCode([1u8; 32]);
+        let chaincode = ChainCode([1u8; CHAIN_CODE_LENGTH]);
 
         let ext_skey = ExtendedPrivateKey {
             key: skey,
@@ -565,8 +565,8 @@ mod tests {
         let parsed: ExtendedPublicKey = bincode::deserialize(&encoded).unwrap();
         assert_eq!(parsed, ext_pkey);
 
-        // Check that the encoding is 81 bytes exactly
-        assert_eq!(encoded.len(), 81);
+        // Check that the encoding is EXTENDED_PUBLIC_KEY_LENGTH (81) bytes exactly
+        assert_eq!(encoded.len(), EXTENDED_PUBLIC_KEY_LENGTH);
 
         // Check that the encoding itself matches the usual one
         assert_eq!(

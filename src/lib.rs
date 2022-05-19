@@ -171,6 +171,8 @@
 #[macro_use]
 extern crate std;
 
+mod constants;
+
 mod error;
 
 /// The private key module.
@@ -188,11 +190,13 @@ mod derivation;
 /// The Schnorr signature module.
 mod signature;
 
+pub use constants::*;
+
 pub use private::PrivateKey;
 pub use public::PublicKey;
 
 pub use keypair::KeyPair;
 
-pub use derivation::{ChainCode, ExtendedPrivateKey, ExtendedPublicKey, CHAIN_CODE_LENGTH};
+pub use derivation::{ChainCode, ExtendedPrivateKey, ExtendedPublicKey};
 
 pub use signature::{KeyedSignature, Signature};

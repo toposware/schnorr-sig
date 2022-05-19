@@ -10,6 +10,7 @@
 //! struct around an `AffinePoint` element.
 
 use super::error::SignatureError;
+use super::PUBLIC_KEY_LENGTH;
 use super::{PrivateKey, Signature};
 
 use cheetah::{AffinePoint, CompressedPoint, Fp, BASEPOINT_TABLE};
@@ -38,12 +39,12 @@ impl PublicKey {
     }
 
     /// Converts this public key to an array of bytes
-    pub fn to_bytes(&self) -> [u8; 49] {
+    pub fn to_bytes(&self) -> [u8; PUBLIC_KEY_LENGTH] {
         self.0.to_compressed().to_bytes()
     }
 
     /// Constructs a public key from an array of bytes
-    pub fn from_bytes(bytes: &[u8; 49]) -> CtOption<Self> {
+    pub fn from_bytes(bytes: &[u8; PUBLIC_KEY_LENGTH]) -> CtOption<Self> {
         AffinePoint::from_compressed(&CompressedPoint::from_bytes(bytes)).map(PublicKey)
     }
 
@@ -141,8 +142,8 @@ mod tests {
         let parsed: PublicKey = bincode::deserialize(&encoded).unwrap();
         assert_eq!(parsed, pkey);
 
-        // Check that the encoding is 49 bytes exactly
-        assert_eq!(encoded.len(), 49);
+        // Check that the encoding is PUBLIC_KEY_LENGTH (49) bytes exactly
+        assert_eq!(encoded.len(), PUBLIC_KEY_LENGTH);
 
         // Check that the encoding itself matches the usual one
         assert_eq!(pkey, bincode::deserialize(&pkey.to_bytes()).unwrap());

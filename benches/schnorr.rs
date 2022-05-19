@@ -14,7 +14,9 @@ use criterion::Criterion;
 use rand_core::{OsRng, RngCore};
 
 extern crate schnorr_sig;
-use schnorr_sig::{ExtendedPrivateKey, ExtendedPublicKey, KeyPair, PrivateKey, PublicKey};
+use schnorr_sig::{
+    ExtendedPrivateKey, ExtendedPublicKey, KeyPair, PrivateKey, PublicKey, PRIVATE_KEY_SEED_LENGTH,
+};
 
 static MESSAGE_LENGTHS: [usize; 3] = [1, 10, 20];
 
@@ -22,7 +24,7 @@ fn criterion_benchmark(c: &mut Criterion) {
     let mut rng = OsRng;
     let skey = PrivateKey::new(&mut rng);
     let keypair = KeyPair::new(&mut rng);
-    let mut seed = [0u8; 32];
+    let mut seed = [0u8; PRIVATE_KEY_SEED_LENGTH];
     rng.fill_bytes(&mut seed);
     let ext_skey = ExtendedPrivateKey::generate_master_key(&seed).unwrap();
     let ext_pkey = ExtendedPublicKey::from_extended_private_key(&ext_skey);

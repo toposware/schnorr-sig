@@ -10,6 +10,7 @@
 //! combining a `PrivateKey` and an associated `PublicKey`.
 
 use super::error::SignatureError;
+use super::KEY_PAIR_LENGTH;
 use super::{KeyedSignature, PrivateKey, PublicKey, Signature};
 
 use cheetah::Fp;
@@ -62,12 +63,12 @@ impl KeyPair {
     /// during reconstruction without extra checks, KeyPair serialization
     /// only serializes the private_key part, and reconstructs the public
     /// key when deserializing.
-    pub fn to_bytes(&self) -> [u8; 32] {
+    pub fn to_bytes(&self) -> [u8; KEY_PAIR_LENGTH] {
         self.private_key.to_bytes()
     }
 
     /// Constructs a key pair from an array of bytes
-    pub fn from_bytes(bytes: &[u8; 32]) -> CtOption<Self> {
+    pub fn from_bytes(bytes: &[u8; KEY_PAIR_LENGTH]) -> CtOption<Self> {
         PrivateKey::from_bytes(bytes).and_then(|private_key| {
             let public_key = PublicKey::from_private_key(&private_key);
             CtOption::new(
@@ -115,7 +116,7 @@ impl Serialize for KeyPair {
         S: Serializer,
     {
         use serde::ser::SerializeTuple;
-        let mut tup = serializer.serialize_tuple(32)?;
+        let mut tup = serializer.serialize_tuple(KEY_PAIR_LENGTH)?;
         for byte in self.to_bytes().iter() {
             tup.serialize_element(byte)?;
         }
@@ -142,7 +143,7 @@ impl<'de> Deserialize<'de> for KeyPair {
             where
                 A: serde::de::SeqAccess<'de>,
             {
-                let mut bytes = [0u8; 32];
+                let mut bytes = [0u8; KEY_PAIR_LENGTH];
                 for (i, byte) in bytes.iter_mut().enumerate() {
                     *byte = seq
                         .next_element()?
@@ -157,7 +158,7 @@ impl<'de> Deserialize<'de> for KeyPair {
             }
         }
 
-        deserializer.deserialize_tuple(32, KeyPairVisitor)
+        deserializer.deserialize_tuple(KEY_PAIR_LENGTH, KeyPairVisitor)
     }
 }
 
@@ -240,8 +241,8 @@ mod tests {
         let parsed: KeyPair = bincode::deserialize(&encoded).unwrap();
         assert_eq!(parsed, key_pair);
 
-        // Check that the encoding is 32 bytes exactly
-        assert_eq!(encoded.len(), 32);
+        // Check that the encoding is KEY_PAIR_LENGTH (32) bytes exactly
+        assert_eq!(encoded.len(), KEY_PAIR_LENGTH);
 
         // Check that the encoding itself matches the usual one
         assert_eq!(

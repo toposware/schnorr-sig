@@ -9,6 +9,7 @@
 //! This module provides a `PrivateKey` wrapping
 //! struct around a `Scalar` element.
 
+use super::PRIVATE_KEY_LENGTH;
 use super::{KeyedSignature, Signature};
 
 use cheetah::{Fp, Scalar};
@@ -51,12 +52,12 @@ impl PrivateKey {
     }
 
     /// Converts this private key to an array of bytes
-    pub fn to_bytes(&self) -> [u8; 32] {
+    pub fn to_bytes(&self) -> [u8; PRIVATE_KEY_LENGTH] {
         self.0.to_bytes()
     }
 
     /// Constructs a private key from an array of bytes
-    pub fn from_bytes(bytes: &[u8; 32]) -> CtOption<Self> {
+    pub fn from_bytes(bytes: &[u8; PRIVATE_KEY_LENGTH]) -> CtOption<Self> {
         Scalar::from_bytes(bytes).and_then(|s| CtOption::new(PrivateKey(s), !s.is_zero()))
     }
 
@@ -174,8 +175,8 @@ mod tests {
         let parsed: PrivateKey = bincode::deserialize(&encoded).unwrap();
         assert_eq!(parsed, skey);
 
-        // Check that the encoding is 32 bytes exactly
-        assert_eq!(encoded.len(), 32);
+        // Check that the encoding is PRIVATE_KEY_LENGTH (32) bytes exactly
+        assert_eq!(encoded.len(), PRIVATE_KEY_LENGTH);
 
         // Check that the encoding itself matches the usual one
         assert_eq!(skey, bincode::deserialize(&skey.to_bytes()).unwrap());
