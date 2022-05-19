@@ -14,7 +14,7 @@ use super::{KeyPair, PrivateKey, PublicKey};
 
 use bitvec::{order::Lsb0, view::AsBits};
 use cheetah::BASEPOINT_TABLE;
-use cheetah::{AffinePoint, Fp, Fp6, ProjectivePoint, Scalar};
+use cheetah::{AffinePoint, Fp, Fp6, Scalar};
 use hash::{
     rescue_64_8_4::RescueHash,
     traits::{Digest, Hasher},
@@ -133,10 +133,9 @@ impl Signature {
 
         // Leverage faster scalar multiplication through
         // Straus-Shamir's trick with hardcoded base point table.
-        let r = AffinePoint::from(
-            pkey.0
-                .multiply_double_with_basepoint_vartime(&h_scalar.to_bytes(), &self.e.to_bytes()),
-        );
+        let r = pkey
+            .0
+            .multiply_double_with_basepoint_vartime(&h_scalar.to_bytes(), &self.e.to_bytes());
 
         if r.get_x() == self.x {
             Ok(())
@@ -263,7 +262,7 @@ impl KeyedSignature {
 
         CtOption::new(
             KeyedSignature {
-                public_key: public_key.unwrap_or(PublicKey(ProjectivePoint::generator())),
+                public_key: public_key.unwrap_or(PublicKey(AffinePoint::generator())),
                 signature: signature.unwrap_or(Signature {
                     x: Fp6::zero(),
                     e: Scalar::zero(),
@@ -369,13 +368,13 @@ mod test {
         }
 
         {
-            let wrong_pkey = PublicKey(ProjectivePoint::generator());
+            let wrong_pkey = PublicKey(AffinePoint::generator());
             assert!(signature.verify(&message, &wrong_pkey).is_err());
         }
 
         {
             // Small order public key
-            let wrong_pkey = PublicKey(ProjectivePoint::from_raw_coordinates([
+            let wrong_pkey = PublicKey(AffinePoint::from_raw_coordinates([
                 Fp6::from_raw_unchecked([
                     0x9bfcd3244afcb637,
                     0x39005e478830b187,
@@ -392,7 +391,6 @@ mod test {
                     0xa92531e4b1338285,
                     0x5b8157814141a7a7,
                 ]),
-                Fp6::one(),
             ]));
             assert!(signature.verify(&message, &wrong_pkey).is_err());
         }
@@ -444,7 +442,7 @@ mod test {
 
         assert_eq!(
             KeyedSignature {
-                public_key: PublicKey(ProjectivePoint::identity()),
+                public_key: PublicKey(AffinePoint::identity()),
                 signature: Signature {
                     x: Fp6::zero(),
                     e: Scalar::one(),
@@ -468,7 +466,7 @@ mod test {
                 x: Fp6::random(&mut rng),
                 e: Scalar::random(&mut rng),
             };
-            let pkey = PublicKey(ProjectivePoint::random(&mut rng));
+            let pkey = PublicKey(AffinePoint::random(&mut rng));
 
             let bytes = sig.to_bytes();
             assert_eq!(sig, Signature::from_bytes(&bytes).unwrap());

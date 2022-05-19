@@ -246,7 +246,7 @@ impl ExtendedPublicKey {
         let mut array = [0u8; 32];
         array.copy_from_slice(&bytes[..32]);
         let point = &BASEPOINT_TABLE * Scalar::from_bytes_non_canonical(&array);
-        let key = PublicKey(point + self.key.0);
+        let key = PublicKey((point + self.key.0).into());
 
         array.copy_from_slice(&bytes[32..]);
         let chaincode = ChainCode(array);

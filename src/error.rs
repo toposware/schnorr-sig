@@ -33,7 +33,7 @@ impl Display for SignatureError {
 #[cfg(test)]
 mod tests {
     use crate::{PrivateKey, PublicKey};
-    use cheetah::{Fp, Fp6, ProjectivePoint};
+    use cheetah::{AffinePoint, Fp, Fp6};
     use rand_core::OsRng;
 
     #[test]
@@ -44,7 +44,7 @@ mod tests {
         let pkey = PublicKey::from_private_key(&skey);
         let signature = skey.sign(&[Fp::zero()], &mut rng);
 
-        let wrong_pkey = PublicKey(ProjectivePoint::from_raw_coordinates([
+        let wrong_pkey = PublicKey(AffinePoint::from_raw_coordinates([
             Fp6::from_raw_unchecked([
                 0x9bfcd3244afcb637,
                 0x39005e478830b187,
@@ -61,7 +61,6 @@ mod tests {
                 0xa92531e4b1338285,
                 0x5b8157814141a7a7,
             ]),
-            Fp6::one(),
         ]));
 
         assert_eq!(

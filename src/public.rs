@@ -7,12 +7,12 @@
 // except according to those terms.
 
 //! This module provides a `PublicKey` wrapping
-//! struct around a `ProjectivePoint` element.
+//! struct around an `AffinePoint` element.
 
 use super::error::SignatureError;
 use super::{PrivateKey, Signature};
 
-use cheetah::{CompressedPoint, Fp, ProjectivePoint, BASEPOINT_TABLE};
+use cheetah::{AffinePoint, CompressedPoint, Fp, BASEPOINT_TABLE};
 use subtle::{Choice, ConditionallySelectable, CtOption};
 
 #[cfg(feature = "serialize")]
@@ -21,11 +21,11 @@ use serde::{Deserialize, Serialize};
 /// A private key
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Hash)]
 #[cfg_attr(feature = "serialize", derive(Deserialize, Serialize))]
-pub struct PublicKey(pub(crate) ProjectivePoint);
+pub struct PublicKey(pub(crate) AffinePoint);
 
 impl ConditionallySelectable for PublicKey {
     fn conditional_select(a: &Self, b: &Self, choice: Choice) -> Self {
-        PublicKey(ProjectivePoint::conditional_select(&a.0, &b.0, choice))
+        PublicKey(AffinePoint::conditional_select(&a.0, &b.0, choice))
     }
 }
 
@@ -34,7 +34,7 @@ impl PublicKey {
     pub fn from_private_key(sk: &PrivateKey) -> Self {
         let pkey = &BASEPOINT_TABLE * sk.0;
 
-        PublicKey(pkey)
+        PublicKey(pkey.into())
     }
 
     /// Converts this public key to an array of bytes
@@ -44,7 +44,7 @@ impl PublicKey {
 
     /// Constructs a public key from an array of bytes
     pub fn from_bytes(bytes: &[u8; 49]) -> CtOption<Self> {
-        ProjectivePoint::from_compressed(&CompressedPoint::from_bytes(bytes)).map(PublicKey)
+        AffinePoint::from_compressed(&CompressedPoint::from_bytes(bytes)).map(PublicKey)
     }
 
     /// Verifies a signature against a message and this public key
@@ -65,8 +65,8 @@ mod tests {
 
     #[test]
     fn test_conditional_selection() {
-        let a = PublicKey(ProjectivePoint::identity());
-        let b = PublicKey(ProjectivePoint::generator());
+        let a = PublicKey(AffinePoint::identity());
+        let b = PublicKey(AffinePoint::generator());
 
         assert_eq!(
             ConditionallySelectable::conditional_select(&a, &b, Choice::from(0u8)),
