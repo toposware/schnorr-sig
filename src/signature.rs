@@ -14,7 +14,7 @@ use super::{KeyPair, PrivateKey, PublicKey};
 
 use bitvec::{order::Lsb0, view::AsBits};
 use cheetah::BASEPOINT_TABLE;
-use cheetah::{AffinePoint, CompressedPoint, Fp, Fp6, ProjectivePoint, Scalar};
+use cheetah::{AffinePoint, Fp, Fp6, Scalar};
 use hash::{
     rescue_64_8_4::RescueHash,
     traits::{Digest, Hasher},
@@ -53,11 +53,7 @@ impl Signature {
         let r = Scalar::random(&mut rng);
         let r_point = AffinePoint::from(&BASEPOINT_TABLE * r);
 
-        let h = hash_message(
-            &r_point.get_x(),
-            &PublicKey::from_private_key(skey),
-            message,
-        );
+        let h = hash_message(&r_point.get_x(), &PublicKey::from(skey), message);
         let h_bits = h.as_bits::<Lsb0>();
 
         // Reconstruct a scalar from the binary sequence of h
@@ -133,10 +129,9 @@ impl Signature {
 
         // Leverage faster scalar multiplication through
         // Straus-Shamir's trick with hardcoded base point table.
-        let r = AffinePoint::from(
-            pkey.0
-                .multiply_double_with_basepoint_vartime(&h_scalar.to_bytes(), &self.e.to_bytes()),
-        );
+        let r = pkey
+            .0
+            .multiply_double_with_basepoint_vartime(&h_scalar.to_bytes(), &self.e.to_bytes());
 
         if r.get_x() == self.x {
             Ok(())
@@ -184,7 +179,7 @@ impl KeyedSignature {
     /// the provided `PrivateKey` internally. For a faster signing, one should prefer
     /// to use `Signature::sign_with_provided_pkey` or `Signature::sign_with_keypair`.
     pub fn sign(message: &[Fp], skey: &PrivateKey, mut rng: impl CryptoRng + RngCore) -> Self {
-        let public_key = PublicKey::from_private_key(skey);
+        let public_key = PublicKey::from(skey);
         let r = Scalar::random(&mut rng);
         let r_point = AffinePoint::from(&BASEPOINT_TABLE * r);
 
@@ -243,7 +238,7 @@ impl KeyedSignature {
     /// Converts this signature to an array of bytes
     pub fn to_bytes(&self) -> [u8; 129] {
         let mut output = [0u8; 129];
-        output[0..49].copy_from_slice(&self.public_key.to_bytes().0);
+        output[0..49].copy_from_slice(&self.public_key.to_bytes());
         output[49..129].copy_from_slice(&self.signature.to_bytes());
 
         output
@@ -253,7 +248,7 @@ impl KeyedSignature {
     pub fn from_bytes(bytes: &[u8; 129]) -> CtOption<Self> {
         let mut array = [0u8; 49];
         array.copy_from_slice(&bytes[0..49]);
-        let public_key = PublicKey::from_bytes(&CompressedPoint(array));
+        let public_key = PublicKey::from_bytes(&array);
 
         let mut array = [0u8; 80];
         array.copy_from_slice(&bytes[49..129]);
@@ -263,7 +258,7 @@ impl KeyedSignature {
 
         CtOption::new(
             KeyedSignature {
-                public_key: public_key.unwrap_or(PublicKey(ProjectivePoint::generator())),
+                public_key: public_key.unwrap_or(PublicKey(AffinePoint::generator())),
                 signature: signature.unwrap_or(Signature {
                     x: Fp6::zero(),
                     e: Scalar::zero(),
@@ -291,6 +286,26 @@ pub(crate) fn hash_message(point_coordinate: &Fp6, pkey: &PublicKey, message: &[
 mod test {
     use super::*;
     use rand_core::OsRng;
+
+    #[test]
+    fn test_conditional_selection() {
+        let mut rng = OsRng;
+        let a = PrivateKey::new(&mut rng);
+        let b = PrivateKey::new(&mut rng);
+
+        let message = [Fp::one(); 3];
+        let sig_a = a.sign(&message, &mut rng);
+        let sig_b = b.sign(&message, &mut rng);
+
+        assert_eq!(
+            ConditionallySelectable::conditional_select(&sig_a, &sig_b, Choice::from(0u8)),
+            sig_a
+        );
+        assert_eq!(
+            ConditionallySelectable::conditional_select(&sig_a, &sig_b, Choice::from(1u8)),
+            sig_b
+        );
+    }
 
     #[test]
     fn test_signature() {
@@ -338,7 +353,7 @@ mod test {
         }
 
         let skey = PrivateKey::new(&mut rng);
-        let pkey = PublicKey::from_private_key(&skey);
+        let pkey = PublicKey::from(&skey);
 
         let signature = Signature::sign(&message, &skey, &mut rng);
 
@@ -349,7 +364,30 @@ mod test {
         }
 
         {
-            let wrong_pkey = PublicKey(ProjectivePoint::generator());
+            let wrong_pkey = PublicKey(AffinePoint::generator());
+            assert!(signature.verify(&message, &wrong_pkey).is_err());
+        }
+
+        {
+            // Small order public key
+            let wrong_pkey = PublicKey(AffinePoint::from_raw_coordinates([
+                Fp6::from_raw_unchecked([
+                    0x9bfcd3244afcb637,
+                    0x39005e478830b187,
+                    0x7046f1c03b42c6cc,
+                    0xb5eeac99193711e5,
+                    0x7fd272e724307b98,
+                    0xcc371dd6dd5d8625,
+                ]),
+                Fp6::from_raw_unchecked([
+                    0x9d03fdc216dfaae8,
+                    0xbf4ade2a7665d9b8,
+                    0xf08b022d5b3262b7,
+                    0x2eaf583a3cf15c6f,
+                    0xa92531e4b1338285,
+                    0x5b8157814141a7a7,
+                ]),
+            ]));
             assert!(signature.verify(&message, &wrong_pkey).is_err());
         }
 
@@ -400,7 +438,7 @@ mod test {
 
         assert_eq!(
             KeyedSignature {
-                public_key: PublicKey(ProjectivePoint::identity()),
+                public_key: PublicKey(AffinePoint::identity()),
                 signature: Signature {
                     x: Fp6::zero(),
                     e: Scalar::one(),
@@ -424,7 +462,7 @@ mod test {
                 x: Fp6::random(&mut rng),
                 e: Scalar::random(&mut rng),
             };
-            let pkey = PublicKey(ProjectivePoint::random(&mut rng));
+            let pkey = PublicKey(AffinePoint::random(&mut rng));
 
             let bytes = sig.to_bytes();
             assert_eq!(sig, Signature::from_bytes(&bytes).unwrap());
@@ -489,7 +527,7 @@ mod test {
         }
 
         let keyed_signature = KeyedSignature {
-            public_key: PublicKey::from_private_key(&skey),
+            public_key: PublicKey::from(&skey),
             signature,
         };
         {

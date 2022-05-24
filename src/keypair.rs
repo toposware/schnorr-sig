@@ -10,6 +10,7 @@
 //! combining a `PrivateKey` and an associated `PublicKey`.
 
 use super::error::SignatureError;
+use super::KEY_PAIR_LENGTH;
 use super::{KeyedSignature, PrivateKey, PublicKey, Signature};
 
 use cheetah::Fp;
@@ -20,6 +21,31 @@ use subtle::{Choice, CtOption};
 use serde::de::Visitor;
 #[cfg(feature = "serialize")]
 use serde::{self, Deserialize, Deserializer, Serialize, Serializer};
+
+impl From<&PrivateKey> for KeyPair {
+    /// Creates a key pair from a private key reference.
+    ///
+    /// If the source or generation method of the private key
+    /// is unknown, it is preferable to use the `KeyPair:new`
+    /// method instead.
+    fn from(private_key: &PrivateKey) -> KeyPair {
+        KeyPair {
+            private_key: *private_key,
+            public_key: private_key.into(),
+        }
+    }
+}
+
+impl From<PrivateKey> for KeyPair {
+    /// Creates a key pair from a private key.
+    ///
+    /// If the source or generation method of the private key
+    /// is unknown, it is preferable to use the `KeyPair:new`
+    /// method instead.
+    fn from(private_key: PrivateKey) -> KeyPair {
+        (&private_key).into()
+    }
+}
 
 /// A KeyPair
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -34,21 +60,7 @@ impl KeyPair {
     /// Generates a new random key pair
     pub fn new(mut rng: impl CryptoRng + RngCore) -> Self {
         let private_key = PrivateKey::new(&mut rng);
-        let public_key = PublicKey::from_private_key(&private_key);
-
-        KeyPair {
-            private_key,
-            public_key,
-        }
-    }
-
-    /// Generates a new key pair from a provided private key.
-    ///
-    /// If the source or generation method of the private key
-    /// is unknown, it is preferable to use the `KeyPair:new`
-    /// method instead.
-    pub fn from_private_key(private_key: PrivateKey) -> Self {
-        let public_key = PublicKey::from_private_key(&private_key);
+        let public_key = PublicKey::from(&private_key);
 
         KeyPair {
             private_key,
@@ -62,14 +74,14 @@ impl KeyPair {
     /// during reconstruction without extra checks, KeyPair serialization
     /// only serializes the private_key part, and reconstructs the public
     /// key when deserializing.
-    pub fn to_bytes(&self) -> [u8; 32] {
+    pub fn to_bytes(&self) -> [u8; KEY_PAIR_LENGTH] {
         self.private_key.to_bytes()
     }
 
     /// Constructs a key pair from an array of bytes
-    pub fn from_bytes(bytes: &[u8; 32]) -> CtOption<Self> {
+    pub fn from_bytes(bytes: &[u8; KEY_PAIR_LENGTH]) -> CtOption<Self> {
         PrivateKey::from_bytes(bytes).and_then(|private_key| {
-            let public_key = PublicKey::from_private_key(&private_key);
+            let public_key = PublicKey::from(&private_key);
             CtOption::new(
                 KeyPair {
                     private_key,
@@ -115,7 +127,7 @@ impl Serialize for KeyPair {
         S: Serializer,
     {
         use serde::ser::SerializeTuple;
-        let mut tup = serializer.serialize_tuple(32)?;
+        let mut tup = serializer.serialize_tuple(KEY_PAIR_LENGTH)?;
         for byte in self.to_bytes().iter() {
             tup.serialize_element(byte)?;
         }
@@ -142,7 +154,7 @@ impl<'de> Deserialize<'de> for KeyPair {
             where
                 A: serde::de::SeqAccess<'de>,
             {
-                let mut bytes = [0u8; 32];
+                let mut bytes = [0u8; KEY_PAIR_LENGTH];
                 for (i, byte) in bytes.iter_mut().enumerate() {
                     *byte = seq
                         .next_element()?
@@ -157,7 +169,7 @@ impl<'de> Deserialize<'de> for KeyPair {
             }
         }
 
-        deserializer.deserialize_tuple(32, KeyPairVisitor)
+        deserializer.deserialize_tuple(KEY_PAIR_LENGTH, KeyPairVisitor)
     }
 }
 
@@ -177,16 +189,19 @@ mod tests {
         }
 
         let skey = PrivateKey::new(&mut rng);
-        let key_pair = KeyPair::from_private_key(skey);
+        let key_pair = KeyPair::from(skey);
 
         let signature = key_pair.sign(&message, &mut rng);
         assert!(key_pair.verify_signature(&signature, &message).is_ok());
+
+        let keyed_signature = key_pair.sign_and_bind_pkey(&message, &mut rng);
+        assert!(keyed_signature.verify(&message).is_ok());
     }
 
     #[test]
     fn test_encoding() {
         assert_eq!(
-            KeyPair::from_private_key(PrivateKey::from_scalar(Scalar::zero())).to_bytes(),
+            KeyPair::from(PrivateKey::from_scalar(Scalar::zero())).to_bytes(),
             [
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0
@@ -194,14 +209,14 @@ mod tests {
         );
 
         assert_eq!(
-            KeyPair::from_private_key(PrivateKey::from_scalar(Scalar::one())).to_bytes(),
+            KeyPair::from(PrivateKey::from_scalar(Scalar::one())).to_bytes(),
             [
                 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0
             ]
         );
 
-        // Test random key pairs encoding
+        // Test random key pairs encodings
         let mut rng = OsRng;
 
         for _ in 0..100 {
@@ -210,19 +225,35 @@ mod tests {
 
             assert_eq!(key_pair, KeyPair::from_bytes(&bytes).unwrap());
         }
+
+        // Test invalid encodings
+        let bytes = [
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0,
+        ];
+        let recovered_key = KeyPair::from_bytes(&bytes);
+        assert!(bool::from(recovered_key.is_none()));
+
+        let bytes = [
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+            0xff, 0xff, 0xff, 0xff,
+        ];
+        let recovered_key = KeyPair::from_bytes(&bytes);
+        assert!(bool::from(recovered_key.is_none()));
     }
 
     #[test]
     #[cfg(feature = "serialize")]
     fn test_serde() {
         let mut rng = OsRng;
-        let key_pair = KeyPair::from_private_key(PrivateKey::new(&mut rng));
+        let key_pair = KeyPair::from(PrivateKey::new(&mut rng));
         let encoded = bincode::serialize(&key_pair).unwrap();
         let parsed: KeyPair = bincode::deserialize(&encoded).unwrap();
         assert_eq!(parsed, key_pair);
 
-        // Check that the encoding is 32 bytes exactly
-        assert_eq!(encoded.len(), 32);
+        // Check that the encoding is KEY_PAIR_LENGTH (32) bytes exactly
+        assert_eq!(encoded.len(), KEY_PAIR_LENGTH);
 
         // Check that the encoding itself matches the usual one
         assert_eq!(
@@ -231,7 +262,7 @@ mod tests {
         );
 
         // Check that invalid encodings fail
-        let key_pair = KeyPair::from_private_key(PrivateKey::new(&mut rng));
+        let key_pair = KeyPair::from(PrivateKey::new(&mut rng));
         let mut encoded = bincode::serialize(&key_pair).unwrap();
         encoded[31] = 127;
         assert!(bincode::deserialize::<KeyPair>(&encoded).is_err());

@@ -68,7 +68,7 @@
 //! let mut rng = OsRng;
 //! let message = [Fp::one(); 42];
 //! let skey = PrivateKey::new(&mut rng);
-//! let pkey = PublicKey::from_private_key(&skey);
+//! let pkey = PublicKey::from(&skey);
 //!
 //! let signature = Signature::sign_with_provided_pkey(&message, &skey, &pkey, &mut rng);
 //! ```
@@ -112,7 +112,7 @@
 //! let mut rng = OsRng;
 //! let message = [Fp::one(); 42];
 //! let skey = PrivateKey::new(&mut rng);
-//! let pkey = PublicKey::from_private_key(&skey);
+//! let pkey = PublicKey::from(&skey);
 //!
 //! let signature = skey.sign(&message, &mut rng);
 //!
@@ -167,6 +167,12 @@
 #![deny(unsafe_code)]
 #![no_std]
 
+#[cfg(test)]
+#[macro_use]
+extern crate std;
+
+mod constants;
+
 mod error;
 
 /// The private key module.
@@ -178,12 +184,19 @@ mod public;
 /// The key pair module.
 mod keypair;
 
+/// The key derivation module.
+mod derivation;
+
 /// The Schnorr signature module.
 mod signature;
+
+pub use constants::*;
 
 pub use private::PrivateKey;
 pub use public::PublicKey;
 
 pub use keypair::KeyPair;
+
+pub use derivation::{ChainCode, ExtendedPrivateKey, ExtendedPublicKey};
 
 pub use signature::{KeyedSignature, Signature};

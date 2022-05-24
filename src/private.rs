@@ -9,7 +9,8 @@
 //! This module provides a `PrivateKey` wrapping
 //! struct around a `Scalar` element.
 
-use super::{KeyedSignature, Signature};
+use super::PRIVATE_KEY_LENGTH;
+use super::{KeyPair, KeyedSignature, Signature};
 
 use cheetah::{Fp, Scalar};
 use rand_core::{CryptoRng, RngCore};
@@ -19,9 +20,23 @@ use subtle::{Choice, ConditionallySelectable, CtOption};
 use serde::{Deserialize, Serialize};
 
 /// A private key
-#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Hash)]
 #[cfg_attr(feature = "serialize", derive(Deserialize, Serialize))]
 pub struct PrivateKey(pub(crate) Scalar);
+
+impl From<&KeyPair> for PrivateKey {
+    /// Extracts a private key from a key pair reference.
+    fn from(key_pair: &KeyPair) -> PrivateKey {
+        key_pair.private_key
+    }
+}
+
+impl From<KeyPair> for PrivateKey {
+    /// Extracts a private key from a key pair.
+    fn from(key_pair: KeyPair) -> PrivateKey {
+        key_pair.private_key
+    }
+}
 
 impl ConditionallySelectable for PrivateKey {
     fn conditional_select(a: &Self, b: &Self, choice: Choice) -> Self {
@@ -32,7 +47,11 @@ impl ConditionallySelectable for PrivateKey {
 impl PrivateKey {
     /// Generates a new random private key
     pub fn new(mut rng: impl CryptoRng + RngCore) -> Self {
-        let secret_scalar = Scalar::random(&mut rng);
+        let mut secret_scalar = Scalar::random(&mut rng);
+        // This should not happen, but we never know..
+        while bool::from(secret_scalar.is_zero()) {
+            secret_scalar = Scalar::random(&mut rng);
+        }
 
         PrivateKey(secret_scalar)
     }
@@ -47,13 +66,13 @@ impl PrivateKey {
     }
 
     /// Converts this private key to an array of bytes
-    pub fn to_bytes(&self) -> [u8; 32] {
+    pub fn to_bytes(&self) -> [u8; PRIVATE_KEY_LENGTH] {
         self.0.to_bytes()
     }
 
     /// Constructs a private key from an array of bytes
-    pub fn from_bytes(bytes: &[u8; 32]) -> CtOption<Self> {
-        Scalar::from_bytes(bytes).and_then(|s| CtOption::new(PrivateKey(s), Choice::from(1u8)))
+    pub fn from_bytes(bytes: &[u8; PRIVATE_KEY_LENGTH]) -> CtOption<Self> {
+        Scalar::from_bytes(bytes).and_then(|s| CtOption::new(PrivateKey(s), !s.is_zero()))
     }
 
     /// Computes a Schnorr signature.
@@ -83,6 +102,21 @@ mod tests {
     use crate::PublicKey;
 
     #[test]
+    fn test_conditional_selection() {
+        let a = PrivateKey(Scalar::from(10u8));
+        let b = PrivateKey(Scalar::from(42u8));
+
+        assert_eq!(
+            ConditionallySelectable::conditional_select(&a, &b, Choice::from(0u8)),
+            a
+        );
+        assert_eq!(
+            ConditionallySelectable::conditional_select(&a, &b, Choice::from(1u8)),
+            b
+        );
+    }
+
+    #[test]
     fn test_signature() {
         let mut rng = OsRng;
 
@@ -92,10 +126,13 @@ mod tests {
         }
 
         let skey = PrivateKey::new(&mut rng);
-        let pkey = PublicKey::from_private_key(&skey);
+        let pkey = PublicKey::from(&skey);
 
         let signature = skey.sign(&message, &mut rng);
         assert!(signature.verify(&message, &pkey).is_ok());
+
+        let keyed_signature = skey.sign_and_bind_pkey(&message, &mut rng);
+        assert!(keyed_signature.verify(&message).is_ok());
     }
 
     #[test]
@@ -116,7 +153,7 @@ mod tests {
             ]
         );
 
-        // Test random keys encoding
+        // Test random keys encodings
         let mut rng = OsRng;
 
         for _ in 0..100 {
@@ -126,14 +163,21 @@ mod tests {
             assert_eq!(key, PrivateKey::from_bytes(&bytes).unwrap());
         }
 
-        // Test invalid encoding
+        // Test invalid encodings
+        let bytes = [
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0,
+        ];
+        let recovered_key = PrivateKey::from_bytes(&bytes);
+        assert!(bool::from(recovered_key.is_none()));
+
         let bytes = [
             0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
             0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
             0xff, 0xff, 0xff, 0xff,
         ];
         let recovered_key = PrivateKey::from_bytes(&bytes);
-        assert!(bool::from(recovered_key.is_none()))
+        assert!(bool::from(recovered_key.is_none()));
     }
 
     #[test]
@@ -145,8 +189,8 @@ mod tests {
         let parsed: PrivateKey = bincode::deserialize(&encoded).unwrap();
         assert_eq!(parsed, skey);
 
-        // Check that the encoding is 32 bytes exactly
-        assert_eq!(encoded.len(), 32);
+        // Check that the encoding is PRIVATE_KEY_LENGTH (32) bytes exactly
+        assert_eq!(encoded.len(), PRIVATE_KEY_LENGTH);
 
         // Check that the encoding itself matches the usual one
         assert_eq!(skey, bincode::deserialize(&skey.to_bytes()).unwrap());
