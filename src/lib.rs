@@ -12,7 +12,7 @@
 //! # Usage
 //!
 //! To generate a new random key pair, consisting of a secret scalar
-//! (private key) and an associated curve point in projective coordinate
+//! (private key) and an associated curve point in affine coordinate
 //! (public key), do as the following:
 //!
 //! ```rust
