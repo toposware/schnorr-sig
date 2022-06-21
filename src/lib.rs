@@ -192,6 +192,8 @@ mod signature;
 
 pub use constants::*;
 
+pub use error::SignatureError;
+
 pub use private::PrivateKey;
 pub use public::PublicKey;
 
