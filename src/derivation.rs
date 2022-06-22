@@ -29,7 +29,7 @@ type HmacSha512 = Hmac<Sha512>;
 /// BIP32 like chain codes, providing large entropy when deriving keys.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serialize", derive(Deserialize, Serialize))]
-pub struct ChainCode([u8; CHAIN_CODE_LENGTH]);
+pub struct ChainCode(pub [u8; CHAIN_CODE_LENGTH]);
 
 impl ConditionallySelectable for ChainCode {
     fn conditional_select(a: &Self, b: &Self, choice: Choice) -> Self {
