@@ -75,6 +75,12 @@ impl PrivateKey {
         Scalar::from_bytes(bytes).and_then(|s| CtOption::new(PrivateKey(s), !s.is_zero()))
     }
 
+    /// Constructs a private key from a 64 bytes seed.
+    pub fn from_seed(seed: &[u8; 64]) -> CtOption<Self> {
+        let s = Scalar::from_bytes_wide(seed);
+        CtOption::new(PrivateKey(s), !s.is_zero())
+    }
+
     /// Computes a Schnorr signature.
     /// It is faster to sign with a `KeyPair` (containing the associated public key),
     /// or to sign through the `Signature::sign_with_provided_pkey` method.
@@ -177,6 +183,28 @@ mod tests {
             0xff, 0xff, 0xff, 0xff,
         ];
         let recovered_key = PrivateKey::from_bytes(&bytes);
+        assert!(bool::from(recovered_key.is_none()));
+    }
+
+    #[test]
+    fn test_from_seed() {
+        let mut rng = OsRng;
+
+        for _ in 0..100 {
+            let key = PrivateKey::new(&mut rng);
+            let bytes = key.to_bytes();
+            let mut seed = [0u8; 64];
+            seed[0..32].copy_from_slice(&bytes);
+
+            assert_eq!(key, PrivateKey::from_seed(&seed).unwrap());
+        }
+
+        let invalid_seed = [
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0,
+        ];
+        let recovered_key = PrivateKey::from_seed(&invalid_seed);
         assert!(bool::from(recovered_key.is_none()));
     }
 

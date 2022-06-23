@@ -92,6 +92,20 @@ impl KeyPair {
         })
     }
 
+    /// Constructs a key pair from a 64 bytes seed.
+    pub fn from_seed(seed: &[u8; 64]) -> CtOption<Self> {
+        PrivateKey::from_seed(seed).and_then(|private_key| {
+            let public_key = PublicKey::from(&private_key);
+            CtOption::new(
+                KeyPair {
+                    private_key,
+                    public_key,
+                },
+                Choice::from(1u8),
+            )
+        })
+    }
+
     /// Computes a Schnorr signature
     pub fn sign(&self, message: &[Fp], mut rng: impl CryptoRng + RngCore) -> Signature {
         Signature::sign_with_keypair(message, self, &mut rng)
@@ -240,6 +254,28 @@ mod tests {
             0xff, 0xff, 0xff, 0xff,
         ];
         let recovered_key = KeyPair::from_bytes(&bytes);
+        assert!(bool::from(recovered_key.is_none()));
+    }
+
+    #[test]
+    fn test_from_seed() {
+        let mut rng = OsRng;
+
+        for _ in 0..100 {
+            let key = KeyPair::new(&mut rng);
+            let bytes = key.to_bytes();
+            let mut seed = [0u8; 64];
+            seed[0..32].copy_from_slice(&bytes);
+
+            assert_eq!(key, KeyPair::from_seed(&seed).unwrap());
+        }
+
+        let invalid_seed = [
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0,
+        ];
+        let recovered_key = KeyPair::from_seed(&invalid_seed);
         assert!(bool::from(recovered_key.is_none()));
     }
 
