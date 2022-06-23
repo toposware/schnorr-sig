@@ -7,7 +7,7 @@ where
 - `u^6 - 7 = 0` is the polynomial defining the sextic extension Fp6 over Fp.
 and implemented [here](https://github.com/ToposWare/cheetah).
 
-* This implementation does not rely on the Rust standard library. The `std` feature is only used to indicate whether to use the `std` or the `alloc` crate for the underlying `hash` dependency.
+* This implementation may not rely on the Rust standard library by relyong on the `alloc` crate instead.
 
 **WARNING:** This is an ongoing, prototype implementation subject to changes. In particular, it has not been audited and may contain bugs and security flaws. This implementation is NOT ready for production use.
 
@@ -15,6 +15,7 @@ and implemented [here](https://github.com/ToposWare/cheetah).
 ## Features
 
 * `serialize` (on by default): Enables Serde serialization
+* `std` (on by default): Enables the Rust standard library
 
 ## Description
 

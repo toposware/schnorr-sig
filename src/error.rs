@@ -33,7 +33,7 @@ impl Display for SignatureError {
 #[cfg(test)]
 mod tests {
     use crate::{PrivateKey, PublicKey};
-    use cheetah::{AffinePoint, Fp, Fp6};
+    use cheetah::{AffinePoint, Fp6};
     use rand_core::OsRng;
 
     #[test]
@@ -42,7 +42,7 @@ mod tests {
 
         let skey = PrivateKey::new(&mut rng);
         let pkey = PublicKey::from(&skey);
-        let signature = skey.sign(&[Fp::zero()], &mut rng);
+        let signature = skey.sign(&[0u8; 8], &mut rng);
 
         let wrong_pkey = PublicKey(AffinePoint::from_raw_coordinates([
             Fp6::from_raw_unchecked([
@@ -64,23 +64,20 @@ mod tests {
         ]));
 
         assert_eq!(
-            format!("{:?}", signature.verify(&[Fp::zero()], &wrong_pkey)),
+            format!("{:?}", signature.verify(&[0u8; 8], &wrong_pkey)),
             "Err(InvalidPublicKey)"
         );
         assert_eq!(
-            format!("{:?}", signature.verify(&[Fp::one()], &pkey)),
+            format!("{:?}", signature.verify(&[1u8; 8], &pkey)),
             "Err(InvalidSignature)"
         );
 
         assert_eq!(
-            format!(
-                "{}",
-                signature.verify(&[Fp::zero()], &wrong_pkey).unwrap_err()
-            ),
+            format!("{}", signature.verify(&[0u8; 8], &wrong_pkey).unwrap_err()),
             "The public key is not an element of the prime subgroup."
         );
         assert_eq!(
-            format!("{}", signature.verify(&[Fp::one()], &pkey).unwrap_err()),
+            format!("{}", signature.verify(&[1u8; 8], &pkey).unwrap_err()),
             "The signature is invalid or was incorrectly computed."
         );
     }

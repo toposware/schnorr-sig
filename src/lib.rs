@@ -35,7 +35,7 @@
 //! use rand_core::OsRng;
 //!
 //! let mut rng = OsRng;
-//! let message = [Fp::one(); 42];
+//! let message = [1u8; 120];
 //! let skey = PrivateKey::new(&mut rng);
 //!
 //! let signature = Signature::sign(&message, &skey, &mut rng);
@@ -47,7 +47,7 @@
 //! use rand_core::OsRng;
 //!
 //! let mut rng = OsRng;
-//! let message = [Fp::one(); 42];
+//! let message = [1u8; 120];
 //! let skey = PrivateKey::new(&mut rng);
 //!
 //! let signature = skey.sign(&message, &mut rng);
@@ -66,7 +66,7 @@
 //! use rand_core::OsRng;
 //!
 //! let mut rng = OsRng;
-//! let message = [Fp::one(); 42];
+//! let message = [1u8; 120];
 //! let skey = PrivateKey::new(&mut rng);
 //! let pkey = PublicKey::from(&skey);
 //!
@@ -80,7 +80,7 @@
 //! use rand_core::OsRng;
 //!
 //! let mut rng = OsRng;
-//! let message = [Fp::one(); 42];
+//! let message = [1u8; 120];
 //! let keypair = KeyPair::new(&mut rng);
 //!
 //! let signature = Signature::sign_with_keypair(&message, &keypair, &mut rng);
@@ -92,7 +92,7 @@
 //! use rand_core::OsRng;
 //!
 //! let mut rng = OsRng;
-//! let message = [Fp::one(); 42];
+//! let message = [1u8; 120];
 //! let keypair = KeyPair::new(&mut rng);
 //!
 //! let signature = keypair.sign(&message, &mut rng);
@@ -110,7 +110,7 @@
 //! use rand_core::OsRng;
 //!
 //! let mut rng = OsRng;
-//! let message = [Fp::one(); 42];
+//! let message = [1u8; 120];
 //! let skey = PrivateKey::new(&mut rng);
 //! let pkey = PublicKey::from(&skey);
 //!
@@ -129,7 +129,7 @@
 //! use rand_core::OsRng;
 //!
 //! let mut rng = OsRng;
-//! let message = [Fp::one(); 42];
+//! let message = [1u8; 120];
 //! let keypair = KeyPair::new(&mut rng);
 //! let pkey = keypair.public_key;
 //!
@@ -151,7 +151,7 @@
 //! use rand_core::OsRng;
 //!
 //! let mut rng = OsRng;
-//! let message = [Fp::one(); 42];
+//! let message = [1u8; 120];
 //! let keypair = KeyPair::new(&mut rng);
 //!
 //! let keyed_signature = KeyedSignature::sign_with_keypair(&message, &keypair, &mut rng);
@@ -160,16 +160,19 @@
 //! assert!(keyed_signature.verify(&message).is_ok());
 //! ```
 
+#![cfg_attr(not(feature = "std"), no_std)]
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![deny(rustdoc::broken_intra_doc_links)]
 #![deny(missing_debug_implementations)]
 #![deny(missing_docs)]
 #![deny(unsafe_code)]
-#![no_std]
 
 #[cfg(test)]
 #[macro_use]
 extern crate std;
+
+#[cfg(not(feature = "std"))]
+extern crate alloc;
 
 mod constants;
 

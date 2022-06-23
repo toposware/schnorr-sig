@@ -12,7 +12,7 @@
 use super::PRIVATE_KEY_LENGTH;
 use super::{KeyPair, KeyedSignature, Signature};
 
-use cheetah::{Fp, Scalar};
+use cheetah::Scalar;
 use rand_core::{CryptoRng, RngCore};
 use subtle::{Choice, ConditionallySelectable, CtOption};
 
@@ -84,7 +84,7 @@ impl PrivateKey {
     /// Computes a Schnorr signature.
     /// It is faster to sign with a `KeyPair` (containing the associated public key),
     /// or to sign through the `Signature::sign_with_provided_pkey` method.
-    pub fn sign(&self, message: &[Fp], mut rng: impl CryptoRng + RngCore) -> Signature {
+    pub fn sign(&self, message: &[u8], mut rng: impl CryptoRng + RngCore) -> Signature {
         Signature::sign(message, self, &mut rng)
     }
 
@@ -93,7 +93,7 @@ impl PrivateKey {
     /// or to sign through the `Signature::sign_with_provided_pkey` method.
     pub fn sign_and_bind_pkey(
         &self,
-        message: &[Fp],
+        message: &[u8],
         mut rng: impl CryptoRng + RngCore,
     ) -> KeyedSignature {
         KeyedSignature::sign(message, self, &mut rng)
@@ -126,10 +126,8 @@ mod tests {
     fn test_signature() {
         let mut rng = OsRng;
 
-        let mut message = [Fp::zero(); 42];
-        for message_chunk in message.iter_mut() {
-            *message_chunk = Fp::random(&mut rng);
-        }
+        let mut message = [0u8; 160];
+        rng.fill_bytes(&mut message);
 
         let skey = PrivateKey::new(&mut rng);
         let pkey = PublicKey::from(&skey);

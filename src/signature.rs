@@ -49,7 +49,7 @@ impl Signature {
     /// Computes a Schnorr signature. This requires to compute the `PublicKey` from
     /// the provided `PrivateKey` internally. For a faster signing, one should prefer
     /// to use `Signature::sign_with_provided_pkey` or `Signature::sign_with_keypair`.
-    pub fn sign(message: &[Fp], skey: &PrivateKey, mut rng: impl CryptoRng + RngCore) -> Self {
+    pub fn sign(message: &[u8], skey: &PrivateKey, mut rng: impl CryptoRng + RngCore) -> Self {
         let r = Scalar::random(&mut rng);
         let r_point = AffinePoint::from(&BASEPOINT_TABLE * r);
 
@@ -70,7 +70,7 @@ impl Signature {
     /// This method does not check that the provided `skey` and `pkey` are matching.
     /// In particular, the resulting signature will be invalid if they don't match.
     pub fn sign_with_provided_pkey(
-        message: &[Fp],
+        message: &[u8],
         skey: &PrivateKey,
         pkey: &PublicKey,
         mut rng: impl CryptoRng + RngCore,
@@ -95,7 +95,7 @@ impl Signature {
     /// This method does not check that the provided `skey` and `pkey` are matching.
     /// In particular, the resulting signature will be invalid if they don't match.
     pub fn sign_with_keypair(
-        message: &[Fp],
+        message: &[u8],
         keypair: &KeyPair,
         mut rng: impl CryptoRng + RngCore,
     ) -> Self {
@@ -116,7 +116,7 @@ impl Signature {
     }
 
     /// Verifies a Schnorr signature
-    pub fn verify(self, message: &[Fp], pkey: &PublicKey) -> Result<(), SignatureError> {
+    pub fn verify(self, message: &[u8], pkey: &PublicKey) -> Result<(), SignatureError> {
         if !bool::from(pkey.0.is_torsion_free()) {
             return Err(SignatureError::InvalidPublicKey);
         }
@@ -178,7 +178,7 @@ impl KeyedSignature {
     /// Computes a Schnorr signature. This requires to compute the `PublicKey` from
     /// the provided `PrivateKey` internally. For a faster signing, one should prefer
     /// to use `Signature::sign_with_provided_pkey` or `Signature::sign_with_keypair`.
-    pub fn sign(message: &[Fp], skey: &PrivateKey, mut rng: impl CryptoRng + RngCore) -> Self {
+    pub fn sign(message: &[u8], skey: &PrivateKey, mut rng: impl CryptoRng + RngCore) -> Self {
         let public_key = PublicKey::from(skey);
         let r = Scalar::random(&mut rng);
         let r_point = AffinePoint::from(&BASEPOINT_TABLE * r);
@@ -205,7 +205,7 @@ impl KeyedSignature {
     /// This method does not check that the provided `skey` and `pkey` are matching.
     /// In particular, the resulting signature will be invalid if they don't match.
     pub fn sign_with_provided_pkey(
-        message: &[Fp],
+        message: &[u8],
         skey: &PrivateKey,
         pkey: &PublicKey,
         mut rng: impl CryptoRng + RngCore,
@@ -220,7 +220,7 @@ impl KeyedSignature {
     /// This method does not check that the provided `skey` and `pkey` are matching.
     /// In particular, the resulting signature will be invalid if they don't match.
     pub fn sign_with_keypair(
-        message: &[Fp],
+        message: &[u8],
         keypair: &KeyPair,
         mut rng: impl CryptoRng + RngCore,
     ) -> Self {
@@ -231,7 +231,7 @@ impl KeyedSignature {
     }
 
     /// Verifies a Schnorr signature
-    pub fn verify(self, message: &[Fp]) -> Result<(), SignatureError> {
+    pub fn verify(self, message: &[u8]) -> Result<(), SignatureError> {
         self.signature.verify(message, &self.public_key)
     }
 
@@ -269,13 +269,25 @@ impl KeyedSignature {
     }
 }
 
-pub(crate) fn hash_message(point_coordinate: &Fp6, pkey: &PublicKey, message: &[Fp]) -> [u8; 32] {
+pub(crate) fn hash_message(point_coordinate: &Fp6, pkey: &PublicKey, message: &[u8]) -> [u8; 32] {
+    #[cfg(not(feature = "std"))]
+    use alloc::vec::Vec;
+
+    // Enforce that the message to be hashed fits the length of a
+    // sequence of canonically encoded field elements.
+    assert!(message.len() % 8 == 0);
+
     let mut data = <[Fp; 6] as From<&Fp6>>::from(point_coordinate).to_vec();
     data.extend_from_slice(&<[Fp; 6] as From<Fp6>>::from(pkey.0.get_x()));
     // Instead of serializing the public key and storing information of the y-coordinate into the
     // empty bits of the x-coordinate, we hash the lowest coefficient of y along with the x array.
     data.push(<[Fp; 6] as From<Fp6>>::from(pkey.0.get_y())[0]);
-    data.extend_from_slice(message);
+
+    let mut message_fp = Vec::with_capacity(message.len() / 8);
+    for chunk in message.chunks(8) {
+        message_fp.push(Fp::from_bytes(&chunk.try_into().unwrap()).unwrap());
+    }
+    data.extend_from_slice(&message_fp);
 
     let h = RescueHash::hash_field(&data);
 
@@ -293,7 +305,7 @@ mod test {
         let a = PrivateKey::new(&mut rng);
         let b = PrivateKey::new(&mut rng);
 
-        let message = [Fp::one(); 3];
+        let message = [1u8; 32];
         let sig_a = a.sign(&message, &mut rng);
         let sig_b = b.sign(&message, &mut rng);
 
@@ -311,10 +323,8 @@ mod test {
     fn test_signature() {
         let mut rng = OsRng;
 
-        let mut message = [Fp::zero(); 42];
-        for message_chunk in message.iter_mut() {
-            *message_chunk = Fp::random(&mut rng);
-        }
+        let mut message = [0u8; 160];
+        rng.fill_bytes(&mut message);
 
         let keypair = KeyPair::new(&mut rng);
         let skey = keypair.private_key;
@@ -347,10 +357,8 @@ mod test {
     fn test_invalid_signature() {
         let mut rng = OsRng;
 
-        let mut message = [Fp::zero(); 42];
-        for message_chunk in message.iter_mut() {
-            *message_chunk = Fp::random(&mut rng);
-        }
+        let mut message = [0u8; 160];
+        rng.fill_bytes(&mut message);
 
         let skey = PrivateKey::new(&mut rng);
         let pkey = PublicKey::from(&skey);
@@ -359,7 +367,7 @@ mod test {
 
         {
             let mut wrong_message = message;
-            wrong_message[4] = Fp::zero();
+            wrong_message[0] = 42;
             assert!(signature.verify(&wrong_message, &pkey).is_err());
         }
 
@@ -494,10 +502,8 @@ mod test {
     fn test_serde() {
         let mut rng = OsRng;
 
-        let mut message = [Fp::zero(); 42];
-        for message_chunk in message.iter_mut() {
-            *message_chunk = Fp::random(&mut rng);
-        }
+        let mut message = [0u8; 160];
+        rng.fill_bytes(&mut message);
 
         let skey = PrivateKey::new(&mut rng);
 

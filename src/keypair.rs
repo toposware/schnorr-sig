@@ -13,7 +13,6 @@ use super::error::SignatureError;
 use super::KEY_PAIR_LENGTH;
 use super::{KeyedSignature, PrivateKey, PublicKey, Signature};
 
-use cheetah::Fp;
 use rand_core::{CryptoRng, RngCore};
 use subtle::{Choice, CtOption};
 
@@ -107,14 +106,14 @@ impl KeyPair {
     }
 
     /// Computes a Schnorr signature
-    pub fn sign(&self, message: &[Fp], mut rng: impl CryptoRng + RngCore) -> Signature {
+    pub fn sign(&self, message: &[u8], mut rng: impl CryptoRng + RngCore) -> Signature {
         Signature::sign_with_keypair(message, self, &mut rng)
     }
 
     /// Computes a Schnorr signature binded to its associated public key.
     pub fn sign_and_bind_pkey(
         &self,
-        message: &[Fp],
+        message: &[u8],
         mut rng: impl CryptoRng + RngCore,
     ) -> KeyedSignature {
         KeyedSignature::sign_with_keypair(message, self, &mut rng)
@@ -124,7 +123,7 @@ impl KeyPair {
     pub fn verify_signature(
         self,
         signature: &Signature,
-        message: &[Fp],
+        message: &[u8],
     ) -> Result<(), SignatureError> {
         signature.verify(message, &self.public_key)
     }
@@ -197,10 +196,8 @@ mod tests {
     fn test_signature() {
         let mut rng = OsRng;
 
-        let mut message = [Fp::zero(); 42];
-        for message_chunk in message.iter_mut() {
-            *message_chunk = Fp::random(&mut rng);
-        }
+        let mut message = [0u8; 160];
+        rng.fill_bytes(&mut message);
 
         let skey = PrivateKey::new(&mut rng);
         let key_pair = KeyPair::from(skey);
