@@ -193,6 +193,22 @@ mod tests {
     use rand_core::OsRng;
 
     #[test]
+    fn test_from_private_key() {
+        let mut rng = OsRng;
+
+        for _ in 0..100 {
+            let skey = PrivateKey::new(&mut rng);
+            let keypair = KeyPair {
+                private_key: skey,
+                public_key: PublicKey::from(&skey),
+            };
+
+            assert_eq!(keypair, KeyPair::from(skey));
+            assert_eq!(keypair, KeyPair::from(&skey));
+        }
+    }
+
+    #[test]
     fn test_signature() {
         let mut rng = OsRng;
 
@@ -297,10 +313,10 @@ mod tests {
         // Check that invalid encodings fail
         let key_pair = KeyPair::from(PrivateKey::new(&mut rng));
         let mut encoded = bincode::serialize(&key_pair).unwrap();
-        encoded[31] = 127;
+        encoded[KEY_PAIR_LENGTH - 1] = 127;
         assert!(bincode::deserialize::<KeyPair>(&encoded).is_err());
 
         let encoded = bincode::serialize(&key_pair).unwrap();
-        assert!(bincode::deserialize::<KeyPair>(&encoded[0..31]).is_err());
+        assert!(bincode::deserialize::<KeyPair>(&encoded[0..KEY_PAIR_LENGTH - 1]).is_err());
     }
 }
