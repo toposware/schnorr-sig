@@ -175,6 +175,7 @@ mod tests {
         for _ in 0..100 {
             let key = PrivateKey::new(&mut rng);
             let bytes = key.to_bytes();
+            assert_eq!(bytes.len(), PRIVATE_KEY_LENGTH);
 
             assert_eq!(key, PrivateKey::from_bytes(&bytes).unwrap());
         }
@@ -239,7 +240,20 @@ mod tests {
         encoded[PRIVATE_KEY_LENGTH - 1] = 127;
         assert!(bincode::deserialize::<PrivateKey>(&encoded).is_err());
 
+        assert_eq!(
+            format!("{:?}", bincode::deserialize::<PrivateKey>(&encoded)),
+            "Err(Custom(\"decompression failed\"))"
+        );
+
         let encoded = bincode::serialize(&skey).unwrap();
         assert!(bincode::deserialize::<PrivateKey>(&encoded[0..PRIVATE_KEY_LENGTH - 1]).is_err());
+
+        assert_eq!(
+            format!(
+                "{:?}",
+                bincode::deserialize::<PrivateKey>(&encoded[0..PRIVATE_KEY_LENGTH - 1])
+            ),
+            "Err(Io(Kind(UnexpectedEof)))"
+        );
     }
 }

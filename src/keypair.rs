@@ -249,6 +249,7 @@ mod tests {
         for _ in 0..100 {
             let key_pair = KeyPair::new(&mut rng);
             let bytes = key_pair.to_bytes();
+            assert_eq!(bytes.len(), KEY_PAIR_LENGTH);
 
             assert_eq!(key_pair, KeyPair::from_bytes(&bytes).unwrap());
         }
@@ -316,7 +317,20 @@ mod tests {
         encoded[KEY_PAIR_LENGTH - 1] = 127;
         assert!(bincode::deserialize::<KeyPair>(&encoded).is_err());
 
+        assert_eq!(
+            format!("{:?}", bincode::deserialize::<KeyPair>(&encoded)),
+            "Err(Custom(\"decompression failed\"))"
+        );
+
         let encoded = bincode::serialize(&key_pair).unwrap();
         assert!(bincode::deserialize::<KeyPair>(&encoded[0..KEY_PAIR_LENGTH - 1]).is_err());
+
+        assert_eq!(
+            format!(
+                "{:?}",
+                bincode::deserialize::<KeyPair>(&encoded[0..KEY_PAIR_LENGTH - 1])
+            ),
+            "Err(Io(Kind(UnexpectedEof)))"
+        );
     }
 }

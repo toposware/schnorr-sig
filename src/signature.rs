@@ -477,6 +477,8 @@ mod test {
             let pkey = PublicKey(AffinePoint::random(&mut rng));
 
             let bytes = sig.to_bytes();
+            assert_eq!(bytes.len(), SIGNATURE_LENGTH);
+
             assert_eq!(sig, Signature::from_bytes(&bytes).unwrap());
 
             let keyed_sig = KeyedSignature {
@@ -485,6 +487,8 @@ mod test {
             };
 
             let bytes = keyed_sig.to_bytes();
+            assert_eq!(bytes.len(), KEYED_SIGNATURE_LENGTH);
+
             assert_eq!(keyed_sig, KeyedSignature::from_bytes(&bytes).unwrap());
         }
 
@@ -532,8 +536,21 @@ mod test {
             encoded[SIGNATURE_LENGTH - 1] = 127;
             assert!(bincode::deserialize::<Signature>(&encoded).is_err());
 
+            assert_eq!(
+                format!("{:?}", bincode::deserialize::<Signature>(&encoded)),
+                "Err(Custom(\"decompression failed\"))"
+            );
+
             let encoded = bincode::serialize(&signature).unwrap();
             assert!(bincode::deserialize::<Signature>(&encoded[0..SIGNATURE_LENGTH - 1]).is_err());
+
+            assert_eq!(
+                format!(
+                    "{:?}",
+                    bincode::deserialize::<Signature>(&encoded[0..SIGNATURE_LENGTH - 1])
+                ),
+                "Err(Io(Kind(UnexpectedEof)))"
+            );
         }
 
         let keyed_signature = KeyedSignature {
@@ -560,11 +577,24 @@ mod test {
             encoded[KEYED_SIGNATURE_LENGTH - 1] = 127;
             assert!(bincode::deserialize::<KeyedSignature>(&encoded).is_err());
 
+            assert_eq!(
+                format!("{:?}", bincode::deserialize::<KeyedSignature>(&encoded)),
+                "Err(Custom(\"decompression failed\"))"
+            );
+
             let encoded = bincode::serialize(&keyed_signature).unwrap();
             assert!(bincode::deserialize::<KeyedSignature>(
                 &encoded[0..KEYED_SIGNATURE_LENGTH - 1]
             )
             .is_err());
+
+            assert_eq!(
+                format!(
+                    "{:?}",
+                    bincode::deserialize::<KeyedSignature>(&encoded[0..SIGNATURE_LENGTH - 1])
+                ),
+                "Err(Io(Kind(UnexpectedEof)))"
+            );
         }
     }
 }

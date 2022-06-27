@@ -128,10 +128,11 @@ mod tests {
         let mut rng = OsRng;
 
         for _ in 0..100 {
-            let key = PrivateKey::new(&mut rng);
+            let key = PublicKey::from(&PrivateKey::new(&mut rng));
             let bytes = key.to_bytes();
+            assert_eq!(bytes.len(), PUBLIC_KEY_LENGTH);
 
-            assert_eq!(key, PrivateKey::from_bytes(&bytes).unwrap());
+            assert_eq!(key, PublicKey::from_bytes(&bytes).unwrap());
         }
 
         // Test invalid encodings
@@ -173,7 +174,20 @@ mod tests {
         encoded[PUBLIC_KEY_LENGTH - 1] = 255;
         assert!(bincode::deserialize::<PublicKey>(&encoded).is_err());
 
+        assert_eq!(
+            format!("{:?}", bincode::deserialize::<PublicKey>(&encoded)),
+            "Err(Custom(\"decompression failed\"))"
+        );
+
         let encoded = bincode::serialize(&pkey).unwrap();
         assert!(bincode::deserialize::<PublicKey>(&encoded[0..PUBLIC_KEY_LENGTH - 1]).is_err());
+
+        assert_eq!(
+            format!(
+                "{:?}",
+                bincode::deserialize::<PublicKey>(&encoded[0..PUBLIC_KEY_LENGTH - 1])
+            ),
+            "Err(Io(Kind(UnexpectedEof)))"
+        );
     }
 }
