@@ -17,8 +17,6 @@ use rand_core::{CryptoRng, RngCore};
 use subtle::{Choice, CtOption};
 
 #[cfg(feature = "serialize")]
-use serde::de::Visitor;
-#[cfg(feature = "serialize")]
 use serde::{self, Deserialize, Deserializer, Serialize, Serializer};
 
 impl From<&PrivateKey> for KeyPair {
@@ -139,12 +137,7 @@ impl Serialize for KeyPair {
     where
         S: Serializer,
     {
-        use serde::ser::SerializeTuple;
-        let mut tup = serializer.serialize_tuple(KEY_PAIR_LENGTH)?;
-        for byte in self.to_bytes().iter() {
-            tup.serialize_element(byte)?;
-        }
-        tup.end()
+        self.private_key.serialize(serializer)
     }
 }
 
@@ -154,35 +147,7 @@ impl<'de> Deserialize<'de> for KeyPair {
     where
         D: Deserializer<'de>,
     {
-        struct KeyPairVisitor;
-
-        impl<'de> Visitor<'de> for KeyPairVisitor {
-            type Value = KeyPair;
-
-            fn expecting(&self, formatter: &mut core::fmt::Formatter) -> core::fmt::Result {
-                formatter.write_str("a valid field element")
-            }
-
-            fn visit_seq<A>(self, mut seq: A) -> Result<KeyPair, A::Error>
-            where
-                A: serde::de::SeqAccess<'de>,
-            {
-                let mut bytes = [0u8; KEY_PAIR_LENGTH];
-                for (i, byte) in bytes.iter_mut().enumerate() {
-                    *byte = seq
-                        .next_element()?
-                        .ok_or_else(|| serde::de::Error::invalid_length(i, &"expected 32 bytes"))?;
-                }
-                let scalar = KeyPair::from_bytes(&bytes);
-                if bool::from(scalar.is_none()) {
-                    Err(serde::de::Error::custom("decompression failed"))
-                } else {
-                    Ok(scalar.unwrap())
-                }
-            }
-        }
-
-        deserializer.deserialize_tuple(KEY_PAIR_LENGTH, KeyPairVisitor)
+        PrivateKey::deserialize(deserializer).map(|k| KeyPair::from(&k))
     }
 }
 
