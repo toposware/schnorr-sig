@@ -291,7 +291,7 @@ pub(crate) fn hash_message(point_coordinate: &Fp6, pkey: &PublicKey, message: &[
 
     let h = RescueHash::hash_field(&data);
 
-    h.as_bytes()
+    h.to_bytes()
 }
 
 #[cfg(test)]
