@@ -9,7 +9,6 @@
 #[macro_use]
 extern crate criterion;
 
-use cheetah::Fp;
 use criterion::Criterion;
 use rand_core::{OsRng, RngCore};
 
@@ -18,7 +17,8 @@ use schnorr_sig::{
     ExtendedPrivateKey, ExtendedPublicKey, KeyPair, PrivateKey, PublicKey, PRIVATE_KEY_SEED_LENGTH,
 };
 
-static MESSAGE_LENGTHS: [usize; 3] = [1, 10, 20];
+// The byte lengths correspond to 1, 10 and 20 `Fp` elements.
+static MESSAGE_LENGTHS: [usize; 3] = [8, 80, 160];
 
 fn criterion_benchmark(c: &mut Criterion) {
     let mut rng = OsRng;
@@ -45,10 +45,8 @@ fn criterion_benchmark(c: &mut Criterion) {
     for &length in MESSAGE_LENGTHS.iter() {
         let name = sign_str.clone() + &length.to_string() + " Fp elements";
         c.bench_function(&name, |bench| {
-            let mut message = vec![Fp::zero(); length];
-            for message_chunk in message.iter_mut() {
-                *message_chunk = Fp::random(&mut rng);
-            }
+            let mut message = vec![0u8; length];
+            rng.fill_bytes(&mut message);
             bench.iter(|| skey.sign(&message, &mut rng))
         });
     }
@@ -57,10 +55,8 @@ fn criterion_benchmark(c: &mut Criterion) {
     for &length in MESSAGE_LENGTHS.iter() {
         let name = sign_str.clone() + &length.to_string() + " Fp elements";
         c.bench_function(&name, |bench| {
-            let mut message = vec![Fp::zero(); length];
-            for message_chunk in message.iter_mut() {
-                *message_chunk = Fp::random(&mut rng);
-            }
+            let mut message = vec![0u8; length];
+            rng.fill_bytes(&mut message);
             bench.iter(|| keypair.sign(&message, &mut rng))
         });
     }
@@ -69,10 +65,8 @@ fn criterion_benchmark(c: &mut Criterion) {
     for &length in MESSAGE_LENGTHS.iter() {
         let name = sign_str.clone() + &length.to_string() + " Fp elements";
         c.bench_function(&name, |bench| {
-            let mut message = vec![Fp::zero(); length];
-            for message_chunk in message.iter_mut() {
-                *message_chunk = Fp::random(&mut rng);
-            }
+            let mut message = vec![0u8; length];
+            rng.fill_bytes(&mut message);
             let signature = keypair.sign(&message, &mut rng);
             bench.iter(|| signature.verify(&message, &keypair.public_key))
         });

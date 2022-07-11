@@ -13,7 +13,6 @@ use super::error::SignatureError;
 use super::KEY_PAIR_LENGTH;
 use super::{KeyedSignature, PrivateKey, PublicKey, Signature};
 
-use cheetah::Fp;
 use rand_core::{CryptoRng, RngCore};
 use subtle::{Choice, CtOption};
 
@@ -92,15 +91,29 @@ impl KeyPair {
         })
     }
 
+    /// Constructs a key pair from a 64 bytes seed.
+    pub fn from_seed(seed: &[u8; 64]) -> CtOption<Self> {
+        PrivateKey::from_seed(seed).and_then(|private_key| {
+            let public_key = PublicKey::from(&private_key);
+            CtOption::new(
+                KeyPair {
+                    private_key,
+                    public_key,
+                },
+                Choice::from(1u8),
+            )
+        })
+    }
+
     /// Computes a Schnorr signature
-    pub fn sign(&self, message: &[Fp], mut rng: impl CryptoRng + RngCore) -> Signature {
+    pub fn sign(&self, message: &[u8], mut rng: impl CryptoRng + RngCore) -> Signature {
         Signature::sign_with_keypair(message, self, &mut rng)
     }
 
     /// Computes a Schnorr signature binded to its associated public key.
     pub fn sign_and_bind_pkey(
         &self,
-        message: &[Fp],
+        message: &[u8],
         mut rng: impl CryptoRng + RngCore,
     ) -> KeyedSignature {
         KeyedSignature::sign_with_keypair(message, self, &mut rng)
@@ -110,7 +123,7 @@ impl KeyPair {
     pub fn verify_signature(
         self,
         signature: &Signature,
-        message: &[Fp],
+        message: &[u8],
     ) -> Result<(), SignatureError> {
         signature.verify(message, &self.public_key)
     }
@@ -183,10 +196,8 @@ mod tests {
     fn test_signature() {
         let mut rng = OsRng;
 
-        let mut message = [Fp::zero(); 42];
-        for message_chunk in message.iter_mut() {
-            *message_chunk = Fp::random(&mut rng);
-        }
+        let mut message = [0u8; 160];
+        rng.fill_bytes(&mut message);
 
         let skey = PrivateKey::new(&mut rng);
         let key_pair = KeyPair::from(skey);
@@ -240,6 +251,28 @@ mod tests {
             0xff, 0xff, 0xff, 0xff,
         ];
         let recovered_key = KeyPair::from_bytes(&bytes);
+        assert!(bool::from(recovered_key.is_none()));
+    }
+
+    #[test]
+    fn test_from_seed() {
+        let mut rng = OsRng;
+
+        for _ in 0..100 {
+            let key = KeyPair::new(&mut rng);
+            let bytes = key.to_bytes();
+            let mut seed = [0u8; 64];
+            seed[0..32].copy_from_slice(&bytes);
+
+            assert_eq!(key, KeyPair::from_seed(&seed).unwrap());
+        }
+
+        let invalid_seed = [
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0,
+        ];
+        let recovered_key = KeyPair::from_seed(&invalid_seed);
         assert!(bool::from(recovered_key.is_none()));
     }
 

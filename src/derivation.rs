@@ -27,7 +27,7 @@ use serde::{Deserialize, Serialize};
 type HmacSha512 = Hmac<Sha512>;
 
 /// BIP32 like chain codes, providing large entropy when deriving keys.
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Copy, Clone, Default, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serialize", derive(Deserialize, Serialize))]
 pub struct ChainCode(pub [u8; CHAIN_CODE_LENGTH]);
 
@@ -284,6 +284,37 @@ impl ExtendedPublicKey {
                 !key.0.is_identity(),
             )
         })
+    }
+}
+
+impl PrivateKey {
+    /// Derives a private child (either normal or hardened) from the provided private key,
+    /// chaincode and index `i`. This should not panic.
+    pub fn derive_private(&self, chaincode: ChainCode, i: &[u8; 4]) -> (Self, ChainCode) {
+        let xsk = ExtendedPrivateKey {
+            key: *self,
+            chaincode,
+        };
+
+        let child = xsk.derive_private(i).unwrap();
+
+        (child.key, child.chaincode)
+    }
+}
+
+impl PublicKey {
+    /// Derives a non-hardened public child from the provided public key,
+    /// chaincode and index `i`.
+    /// This will panic if the provided index `i` corresponds to a hardened child.
+    pub fn derive_public(&self, chaincode: ChainCode, i: &[u8; 4]) -> (Self, ChainCode) {
+        let xsk = ExtendedPublicKey {
+            key: *self,
+            chaincode,
+        };
+
+        let child = xsk.derive_normal_public(i).unwrap();
+
+        (child.key, child.chaincode)
     }
 }
 
