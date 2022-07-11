@@ -8,14 +8,26 @@
 
 //! This module defines all constants used in this crate.
 
+/// Scalar element length in bytes (serialized form)
+pub const SCALAR_LENGTH: usize = 32;
+
 /// Private key length in bytes (serialized form)
-pub const PRIVATE_KEY_LENGTH: usize = 32;
+pub const PRIVATE_KEY_LENGTH: usize = SCALAR_LENGTH;
+
+/// Basefield element length in bytes (serialized form)
+pub const BASEFIELD_LENGTH: usize = 48;
 
 /// Public key length in bytes (serialized form)
-pub const PUBLIC_KEY_LENGTH: usize = 49;
+pub const PUBLIC_KEY_LENGTH: usize = BASEFIELD_LENGTH + 1;
 
 /// Key pair length in bytes (serialized form)
-pub const KEY_PAIR_LENGTH: usize = 32;
+pub const KEY_PAIR_LENGTH: usize = PRIVATE_KEY_LENGTH;
+
+/// Signature length in bytes (serialized form)
+pub const SIGNATURE_LENGTH: usize = BASEFIELD_LENGTH + SCALAR_LENGTH;
+
+/// Keyed signature length in bytes (serialized form)
+pub const KEYED_SIGNATURE_LENGTH: usize = SIGNATURE_LENGTH + PUBLIC_KEY_LENGTH;
 
 /// Chain code length for deriving keys
 /// It could be only 16 but is set to 32 for safety.

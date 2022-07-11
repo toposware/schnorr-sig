@@ -472,6 +472,7 @@ mod tests {
                 chaincode: ChainCode(chaincode),
             };
             let bytes = key.to_bytes();
+            assert_eq!(bytes.len(), EXTENDED_PRIVATE_KEY_LENGTH);
 
             assert_eq!(key, ExtendedPrivateKey::from_bytes(&bytes).unwrap());
         }
@@ -521,6 +522,7 @@ mod tests {
                 chaincode: ChainCode(chaincode),
             };
             let bytes = key.to_bytes();
+            assert_eq!(bytes.len(), EXTENDED_PUBLIC_KEY_LENGTH);
 
             assert_eq!(key, ExtendedPublicKey::from_bytes(&bytes).unwrap());
         }

@@ -108,6 +108,18 @@ mod tests {
     use crate::PublicKey;
 
     #[test]
+    fn test_from_keypair() {
+        let mut rng = OsRng;
+
+        for _ in 0..100 {
+            let keypair = KeyPair::new(&mut rng);
+
+            assert_eq!(keypair.private_key, PrivateKey::from(keypair));
+            assert_eq!(keypair.private_key, PrivateKey::from(&keypair));
+        }
+    }
+
+    #[test]
     fn test_conditional_selection() {
         let a = PrivateKey(Scalar::from(10u8));
         let b = PrivateKey(Scalar::from(42u8));
@@ -163,6 +175,7 @@ mod tests {
         for _ in 0..100 {
             let key = PrivateKey::new(&mut rng);
             let bytes = key.to_bytes();
+            assert_eq!(bytes.len(), PRIVATE_KEY_LENGTH);
 
             assert_eq!(key, PrivateKey::from_bytes(&bytes).unwrap());
         }
@@ -224,10 +237,23 @@ mod tests {
         // Check that invalid encodings fail
         let skey = PrivateKey::new(&mut rng);
         let mut encoded = bincode::serialize(&skey).unwrap();
-        encoded[31] = 127;
+        encoded[PRIVATE_KEY_LENGTH - 1] = 127;
         assert!(bincode::deserialize::<PrivateKey>(&encoded).is_err());
 
+        assert_eq!(
+            format!("{:?}", bincode::deserialize::<PrivateKey>(&encoded)),
+            "Err(Custom(\"decompression failed\"))"
+        );
+
         let encoded = bincode::serialize(&skey).unwrap();
-        assert!(bincode::deserialize::<PrivateKey>(&encoded[0..31]).is_err());
+        assert!(bincode::deserialize::<PrivateKey>(&encoded[0..PRIVATE_KEY_LENGTH - 1]).is_err());
+
+        assert_eq!(
+            format!(
+                "{:?}",
+                bincode::deserialize::<PrivateKey>(&encoded[0..PRIVATE_KEY_LENGTH - 1])
+            ),
+            "Err(Io(Kind(UnexpectedEof)))"
+        );
     }
 }

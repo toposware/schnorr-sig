@@ -9,8 +9,11 @@
 //! This module provides a Signature struct implementing
 //! Schnorr signing and verification.
 
+use crate::PUBLIC_KEY_LENGTH;
+
 use super::error::SignatureError;
 use super::{KeyPair, PrivateKey, PublicKey};
+use super::{BASEFIELD_LENGTH, KEYED_SIGNATURE_LENGTH, SCALAR_LENGTH, SIGNATURE_LENGTH};
 
 use bitvec::{order::Lsb0, view::AsBits};
 use cheetah::BASEPOINT_TABLE;
@@ -141,22 +144,22 @@ impl Signature {
     }
 
     /// Converts this signature to an array of bytes
-    pub fn to_bytes(&self) -> [u8; 80] {
-        let mut output = [0u8; 80];
-        output[0..48].copy_from_slice(&self.x.to_bytes());
-        output[48..80].copy_from_slice(&self.e.to_bytes());
+    pub fn to_bytes(&self) -> [u8; SIGNATURE_LENGTH] {
+        let mut output = [0u8; SIGNATURE_LENGTH];
+        output[0..BASEFIELD_LENGTH].copy_from_slice(&self.x.to_bytes());
+        output[BASEFIELD_LENGTH..SIGNATURE_LENGTH].copy_from_slice(&self.e.to_bytes());
 
         output
     }
 
     /// Constructs a signature from an array of bytes
-    pub fn from_bytes(bytes: &[u8; 80]) -> CtOption<Self> {
-        let mut array = [0u8; 48];
-        array.copy_from_slice(&bytes[0..48]);
+    pub fn from_bytes(bytes: &[u8; SIGNATURE_LENGTH]) -> CtOption<Self> {
+        let mut array = [0u8; BASEFIELD_LENGTH];
+        array.copy_from_slice(&bytes[0..BASEFIELD_LENGTH]);
         let x = Fp6::from_bytes(&array);
 
-        let mut array = [0u8; 32];
-        array.copy_from_slice(&bytes[48..80]);
+        let mut array = [0u8; SCALAR_LENGTH];
+        array.copy_from_slice(&bytes[BASEFIELD_LENGTH..SIGNATURE_LENGTH]);
         let e = Scalar::from_bytes(&array);
 
         x.and_then(|x| e.and_then(|e| CtOption::new(Signature { x, e }, Choice::from(1u8))))
@@ -236,22 +239,23 @@ impl KeyedSignature {
     }
 
     /// Converts this signature to an array of bytes
-    pub fn to_bytes(&self) -> [u8; 129] {
-        let mut output = [0u8; 129];
-        output[0..49].copy_from_slice(&self.public_key.to_bytes());
-        output[49..129].copy_from_slice(&self.signature.to_bytes());
+    pub fn to_bytes(&self) -> [u8; KEYED_SIGNATURE_LENGTH] {
+        let mut output = [0u8; KEYED_SIGNATURE_LENGTH];
+        output[0..PUBLIC_KEY_LENGTH].copy_from_slice(&self.public_key.to_bytes());
+        output[PUBLIC_KEY_LENGTH..KEYED_SIGNATURE_LENGTH]
+            .copy_from_slice(&self.signature.to_bytes());
 
         output
     }
 
     /// Constructs a signature from an array of bytes
-    pub fn from_bytes(bytes: &[u8; 129]) -> CtOption<Self> {
-        let mut array = [0u8; 49];
-        array.copy_from_slice(&bytes[0..49]);
+    pub fn from_bytes(bytes: &[u8; KEYED_SIGNATURE_LENGTH]) -> CtOption<Self> {
+        let mut array = [0u8; PUBLIC_KEY_LENGTH];
+        array.copy_from_slice(&bytes[0..PUBLIC_KEY_LENGTH]);
         let public_key = PublicKey::from_bytes(&array);
 
-        let mut array = [0u8; 80];
-        array.copy_from_slice(&bytes[49..129]);
+        let mut array = [0u8; SIGNATURE_LENGTH];
+        array.copy_from_slice(&bytes[PUBLIC_KEY_LENGTH..KEYED_SIGNATURE_LENGTH]);
         let signature = Signature::from_bytes(&array);
 
         let choice = public_key.is_some() & signature.is_some();
@@ -473,6 +477,8 @@ mod test {
             let pkey = PublicKey(AffinePoint::random(&mut rng));
 
             let bytes = sig.to_bytes();
+            assert_eq!(bytes.len(), SIGNATURE_LENGTH);
+
             assert_eq!(sig, Signature::from_bytes(&bytes).unwrap());
 
             let keyed_sig = KeyedSignature {
@@ -481,6 +487,8 @@ mod test {
             };
 
             let bytes = keyed_sig.to_bytes();
+            assert_eq!(bytes.len(), KEYED_SIGNATURE_LENGTH);
+
             assert_eq!(keyed_sig, KeyedSignature::from_bytes(&bytes).unwrap());
         }
 
@@ -513,8 +521,8 @@ mod test {
             let parsed: Signature = bincode::deserialize(&encoded).unwrap();
             assert_eq!(parsed, signature);
 
-            // Check that the encoding is 80 bytes exactly
-            assert_eq!(encoded.len(), 80);
+            // Check that the encoding is SIGNATURE_LENGTH (80) bytes exactly
+            assert_eq!(encoded.len(), SIGNATURE_LENGTH);
 
             // Check that the encoding itself matches the usual one
             assert_eq!(
@@ -525,11 +533,24 @@ mod test {
             // Check that invalid encodings fail
             let signature = Signature::sign(&message, &skey, &mut rng);
             let mut encoded = bincode::serialize(&signature).unwrap();
-            encoded[79] = 127;
+            encoded[SIGNATURE_LENGTH - 1] = 127;
             assert!(bincode::deserialize::<Signature>(&encoded).is_err());
 
+            assert_eq!(
+                format!("{:?}", bincode::deserialize::<Signature>(&encoded)),
+                "Err(Custom(\"decompression failed\"))"
+            );
+
             let encoded = bincode::serialize(&signature).unwrap();
-            assert!(bincode::deserialize::<Signature>(&encoded[0..79]).is_err());
+            assert!(bincode::deserialize::<Signature>(&encoded[0..SIGNATURE_LENGTH - 1]).is_err());
+
+            assert_eq!(
+                format!(
+                    "{:?}",
+                    bincode::deserialize::<Signature>(&encoded[0..SIGNATURE_LENGTH - 1])
+                ),
+                "Err(Io(Kind(UnexpectedEof)))"
+            );
         }
 
         let keyed_signature = KeyedSignature {
@@ -541,8 +562,8 @@ mod test {
             let parsed: KeyedSignature = bincode::deserialize(&encoded).unwrap();
             assert_eq!(parsed, keyed_signature);
 
-            // Check that the encoding is 129 bytes exactly
-            assert_eq!(encoded.len(), 129);
+            // Check that the encoding is KEYED_SIGNATURE_LENGTH (129) bytes exactly
+            assert_eq!(encoded.len(), KEYED_SIGNATURE_LENGTH);
 
             // Check that the encoding itself matches the usual one
             assert_eq!(
@@ -553,11 +574,27 @@ mod test {
             // Check that invalid encodings fail
             let keyed_signature = KeyedSignature::sign(&message, &skey, &mut rng);
             let mut encoded = bincode::serialize(&keyed_signature).unwrap();
-            encoded[128] = 127;
+            encoded[KEYED_SIGNATURE_LENGTH - 1] = 127;
             assert!(bincode::deserialize::<KeyedSignature>(&encoded).is_err());
 
+            assert_eq!(
+                format!("{:?}", bincode::deserialize::<KeyedSignature>(&encoded)),
+                "Err(Custom(\"decompression failed\"))"
+            );
+
             let encoded = bincode::serialize(&keyed_signature).unwrap();
-            assert!(bincode::deserialize::<KeyedSignature>(&encoded[0..128]).is_err());
+            assert!(bincode::deserialize::<KeyedSignature>(
+                &encoded[0..KEYED_SIGNATURE_LENGTH - 1]
+            )
+            .is_err());
+
+            assert_eq!(
+                format!(
+                    "{:?}",
+                    bincode::deserialize::<KeyedSignature>(&encoded[0..SIGNATURE_LENGTH - 1])
+                ),
+                "Err(Io(Kind(UnexpectedEof)))"
+            );
         }
     }
 }
