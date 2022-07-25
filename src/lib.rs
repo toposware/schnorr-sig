@@ -139,6 +139,23 @@
 //! assert!(pkey.verify_signature(&signature, &message).is_ok());
 //! ```
 //!
+//! Signatures can be verified in a batch, which improves the amortized
+//! verification cost per signature. The order of the provided messages,
+//! public keys and signatures ***matters*** and needs to be kept
+//! consistent. You can verify a batch of signatures as illustrated in
+//! the following example:
+//!
+//! ```rust,ignore
+//! use schnorr_sig::verify_batch;
+//! use rand_core::OsRng;
+//!
+//! let mut rng = OsRng;
+//!
+//! // Sign a bunch of messages with (potentially different) private keys.
+//!
+//! assert!(verify_batch(&signatures, &public_keys, &messages, &mut rng).is_ok());
+//! ```
+//!
 //! The `KeyedSignature` struct can also be used to attach the identity
 //! of the signer (its `PublicKey`) to a produced signature. The
 //! `KeyedSignature` struct shares the same signing methods than the
@@ -193,6 +210,8 @@ mod derivation;
 /// The Schnorr signature module.
 mod signature;
 
+mod batch;
+
 pub use constants::*;
 
 pub use error::SignatureError;
@@ -205,3 +224,5 @@ pub use keypair::KeyPair;
 pub use derivation::{ChainCode, ExtendedPrivateKey, ExtendedPublicKey};
 
 pub use signature::{KeyedSignature, Signature};
+
+pub use batch::verify_batch;
