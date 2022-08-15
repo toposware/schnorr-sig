@@ -9,7 +9,7 @@
 use core::fmt::{Display, Formatter, Result};
 
 /// Custom error type during signature operations
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum SignatureError {
     /// Invalid public key
     InvalidPublicKey,
