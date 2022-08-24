@@ -1,0 +1,40 @@
+name: QA Code Quality and Security
+on:
+  push
+
+env:
+  rust_clippy: 1.62.1
+
+jobs:
+  code-scan:
+    name: Sonarqube scan code
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install Rustup
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+          source ~/.cargo/env
+          rustup default stable
+          rustup update stable
+      - uses: Swatinem/rust-cache@v1
+      - name: Generate linting report
+        run: |
+          cargo clippy --all-targets -r --message-format=json &> ./clippy-out
+      - name: Generate code coverage report
+        run: |
+          cargo install cargo-tarpaulin
+          RUN_MODE=local cargo tarpaulin --all-features --timeout 600 --out Lcov
+      - name: Hack to rewrite file paths in lcov.info
+        run: |
+          sed -i 's@'$GITHUB_WORKSPACE'@/github/workspace/@g' lcov.info
+      - name: Sonarqube scan
+        uses: sonarsource/sonarqube-scan-action@master
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+      - name: Sonarqube gate
+        uses: sonarsource/sonarqube-quality-gate-action@master
+        timeout-minutes: 5
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
