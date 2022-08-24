@@ -29,7 +29,7 @@ criterion = "0.3"
 [features]
 default = ["serialize", "std"]
 serialize = ["serde", "cheetah/serialize"]
-std = ["hash/std"]
+std = ["hash/std", "cheetah/std"]
 
 [[bench]]
 name = "schnorr"
