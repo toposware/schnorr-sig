@@ -275,19 +275,28 @@ pub(crate) fn hash_message(point_coordinate: &Fp6, pkey: &PublicKey, message: &[
     #[cfg(not(feature = "std"))]
     use alloc::vec::Vec;
 
-    // Enforce that the message to be hashed fits the length of a
-    // sequence of canonically encoded field elements.
-    assert!(message.len() % 8 == 0);
-
     let mut data = <[Fp; 6] as From<&Fp6>>::from(point_coordinate).to_vec();
     data.extend_from_slice(&<[Fp; 6] as From<Fp6>>::from(pkey.0.get_x()));
     // Instead of serializing the public key and storing information of the y-coordinate into the
     // empty bits of the x-coordinate, we hash the lowest coefficient of y along with the x array.
     data.push(<[Fp; 6] as From<Fp6>>::from(pkey.0.get_y())[0]);
 
-    let mut message_fp = Vec::with_capacity(message.len() / 8);
-    for chunk in message.chunks(8) {
-        message_fp.push(Fp::from_bytes(&chunk.try_into().unwrap()).unwrap());
+    // To ensure valid conversion to field elements, we consider chunks of 7 bytes of the message slice.
+    let nb_chunks = message.len() / 7;
+    let mut message_fp = Vec::with_capacity(nb_chunks);
+    let mut buf = [0u8; 8];
+    for (i, chunk) in message.chunks(7).enumerate() {
+        if i < nb_chunks {
+            buf[..7].copy_from_slice(chunk);
+            message_fp.push(Fp::from_bytes(&buf).unwrap());
+        } else {
+            // the last chunk may be smaller than 7
+            let chunk_len = chunk.len();
+            buf = [0u8; 8];
+            buf[..chunk_len].copy_from_slice(chunk);
+            buf[chunk_len] = 1;
+            message_fp.push(Fp::from_bytes(&buf).unwrap());
+        }
     }
     data.extend_from_slice(&message_fp);
 
